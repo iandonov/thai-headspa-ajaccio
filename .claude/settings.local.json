@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:lotusheadspala.com)",
+      "WebFetch(domain:thaiheadspaajaccio-9ckr328.gamma.site)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(gh repo *)",
+      "Bash(npm create *)",
+      "Bash(npx sv *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)"
+    ]
+  }
+}
