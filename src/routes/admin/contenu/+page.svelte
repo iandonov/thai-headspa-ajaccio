@@ -32,16 +32,16 @@
 <svelte:head><title>Contenu CMS — Admin</title></svelte:head>
 
 <div class="mb-8">
-	<h1 class="font-serif text-3xl text-[--color-charcoal]">Gestion du Contenu</h1>
-	<p class="font-sans text-sm text-[--color-stone] mt-1">Modifiez les textes affichés sur le site</p>
+	<h1 class="font-serif text-3xl text-(--color-charcoal)">Gestion du Contenu</h1>
+	<p class="font-sans text-sm text-(--color-stone) mt-1">Modifiez les textes affichés sur le site</p>
 </div>
 
 <div class="space-y-6">
 	{#each Object.entries(contentLabels) as [key, label]}
-		<div class="bg-white rounded-[--radius-card] border border-[--color-sand]/60 p-6">
+		<div class="bg-white rounded-(--radius-card) border border-(--color-sand)/60 p-6">
 			<div class="flex items-center justify-between mb-3">
-				<label class="font-sans text-sm font-medium text-[--color-charcoal]">{label}</label>
-				<span class="font-mono text-xs text-[--color-stone]/50">{key}</span>
+				<label class="font-sans text-sm font-medium text-(--color-charcoal)">{label}</label>
+				<span class="font-mono text-xs text-(--color-stone)/50">{key}</span>
 			</div>
 			{#if saved === key}
 				<div class="mb-3 flex items-center gap-2 text-green-600 text-sm font-sans">

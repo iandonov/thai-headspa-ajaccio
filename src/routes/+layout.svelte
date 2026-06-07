@@ -35,8 +35,8 @@
 		<div class="max-w-7xl mx-auto px-6 flex items-center justify-between">
 			<!-- Logo -->
 			<a href="/" class="flex flex-col leading-none group">
-				<span class="font-serif text-xl {scrolled ? 'text-[--color-forest]' : 'text-white'} transition-colors duration-300">Thai Head Spa</span>
-				<span class="font-sans text-xs tracking-[0.3em] uppercase {scrolled ? 'text-[--color-gold]' : 'text-white/80'} transition-colors duration-300">Ajaccio</span>
+				<span class="font-serif text-xl {scrolled ? 'text-(--color-forest)' : 'text-white'} transition-colors duration-300">Thai Head Spa</span>
+				<span class="font-sans text-xs tracking-[0.3em] uppercase {scrolled ? 'text-(--color-gold)' : 'text-white/80'} transition-colors duration-300">Ajaccio</span>
 			</a>
 
 			<!-- Desktop Nav -->
@@ -46,8 +46,8 @@
 						href={link.href}
 						class="font-sans text-sm tracking-wider transition-all duration-200
 							{isActive(link.href)
-								? (scrolled ? 'text-[--color-gold]' : 'text-[--color-gold]')
-								: (scrolled ? 'text-[--color-charcoal] hover:text-[--color-gold]' : 'text-white/90 hover:text-white')}
+								? (scrolled ? 'text-(--color-gold)' : 'text-(--color-gold)')
+								: (scrolled ? 'text-(--color-charcoal) hover:text-(--color-gold)' : 'text-white/90 hover:text-white')}
 						"
 					>
 						{link.label}
@@ -58,11 +58,11 @@
 			<!-- Auth + Book -->
 			<div class="hidden lg:flex items-center gap-4">
 				{#if data.user}
-					<a href="/compte" class="font-sans text-sm {scrolled ? 'text-[--color-charcoal]' : 'text-white/90'} hover:text-[--color-gold] transition-colors">
+					<a href="/compte" class="font-sans text-sm {scrolled ? 'text-(--color-charcoal)' : 'text-white/90'} hover:text-(--color-gold) transition-colors">
 						{data.user.firstName}
 					</a>
 				{:else}
-					<a href="/connexion" class="font-sans text-sm {scrolled ? 'text-[--color-charcoal]' : 'text-white/90'} hover:text-[--color-gold] transition-colors tracking-wider">
+					<a href="/connexion" class="font-sans text-sm {scrolled ? 'text-(--color-charcoal)' : 'text-white/90'} hover:text-(--color-gold) transition-colors tracking-wider">
 						Connexion
 					</a>
 				{/if}
@@ -77,21 +77,21 @@
 				class="lg:hidden flex flex-col gap-1.5 p-2"
 				aria-label="Menu"
 			>
-				<span class="w-6 h-px {scrolled ? 'bg-[--color-charcoal]' : 'bg-white'} transition-all duration-300 {mobileOpen ? 'rotate-45 translate-y-2' : ''}"></span>
-				<span class="w-6 h-px {scrolled ? 'bg-[--color-charcoal]' : 'bg-white'} transition-all duration-300 {mobileOpen ? 'opacity-0' : ''}"></span>
-				<span class="w-6 h-px {scrolled ? 'bg-[--color-charcoal]' : 'bg-white'} transition-all duration-300 {mobileOpen ? '-rotate-45 -translate-y-2' : ''}"></span>
+				<span class="w-6 h-px {scrolled ? 'bg-(--color-charcoal)' : 'bg-white'} transition-all duration-300 {mobileOpen ? 'rotate-45 translate-y-2' : ''}"></span>
+				<span class="w-6 h-px {scrolled ? 'bg-(--color-charcoal)' : 'bg-white'} transition-all duration-300 {mobileOpen ? 'opacity-0' : ''}"></span>
+				<span class="w-6 h-px {scrolled ? 'bg-(--color-charcoal)' : 'bg-white'} transition-all duration-300 {mobileOpen ? '-rotate-45 -translate-y-2' : ''}"></span>
 			</button>
 		</div>
 
 		<!-- Mobile Menu -->
 		{#if mobileOpen}
-			<div class="lg:hidden bg-white/98 backdrop-blur-md border-t border-[--color-sand] px-6 py-6 flex flex-col gap-4">
+			<div class="lg:hidden bg-white/98 backdrop-blur-md border-t border-(--color-sand) px-6 py-6 flex flex-col gap-4">
 				{#each navLinks as link}
 					<a
 						href={link.href}
 						onclick={() => mobileOpen = false}
-						class="font-sans text-base py-2 border-b border-[--color-sand]/50
-							{isActive(link.href) ? 'text-[--color-gold]' : 'text-[--color-charcoal]'}"
+						class="font-sans text-base py-2 border-b border-(--color-sand)/50
+							{isActive(link.href) ? 'text-(--color-gold)' : 'text-(--color-charcoal)'}"
 					>
 						{link.label}
 					</a>
@@ -114,13 +114,13 @@
 	</main>
 
 	<!-- Footer -->
-	<footer class="bg-[--color-forest] text-white/80">
+	<footer class="bg-(--color-forest) text-white/80">
 		<div class="max-w-7xl mx-auto px-6 py-16">
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-12">
 				<!-- Brand -->
 				<div>
 					<h3 class="font-serif text-2xl text-white mb-2">Thai Head Spa</h3>
-					<p class="font-sans text-xs tracking-[0.3em] uppercase text-[--color-gold] mb-4">Ajaccio</p>
+					<p class="font-sans text-xs tracking-[0.3em] uppercase text-(--color-gold) mb-4">Ajaccio</p>
 					<p class="text-sm leading-relaxed text-white/60 mb-6">
 						L'art ancestral du soin thaïlandais au cœur de la Corse.
 					</p>
@@ -135,11 +135,11 @@
 					<ul class="space-y-2">
 						{#each navLinks as link}
 							<li>
-								<a href={link.href} class="text-sm text-white/60 hover:text-[--color-gold] transition-colors">{link.label}</a>
+								<a href={link.href} class="text-sm text-white/60 hover:text-(--color-gold) transition-colors">{link.label}</a>
 							</li>
 						{/each}
 						{#if data.user?.role === 'admin'}
-							<li><a href="/admin" class="text-sm text-[--color-gold]/70 hover:text-[--color-gold] transition-colors">Administration</a></li>
+							<li><a href="/admin" class="text-sm text-(--color-gold)/70 hover:text-(--color-gold) transition-colors">Administration</a></li>
 						{/if}
 					</ul>
 				</div>
@@ -150,7 +150,7 @@
 					<address class="not-italic space-y-3 text-sm text-white/60">
 						<p>05 rue Comte Bacciochi<br />20 000 Ajaccio</p>
 						<p>
-							<a href="tel:+33607949663" class="hover:text-[--color-gold] transition-colors">06 07 94 96 63</a>
+							<a href="tel:+33607949663" class="hover:text-(--color-gold) transition-colors">06 07 94 96 63</a>
 						</p>
 						<p class="text-white/40 text-xs leading-relaxed">
 							Mardi – Vendredi : 9h–18h<br />

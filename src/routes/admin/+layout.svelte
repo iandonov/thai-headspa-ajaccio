@@ -16,13 +16,13 @@
 	}
 </script>
 
-<div class="min-h-screen flex bg-[--color-cream]">
+<div class="min-h-screen flex bg-(--color-cream)">
 	<!-- Sidebar -->
-	<aside class="w-64 bg-[--color-forest] flex-shrink-0 hidden lg:flex flex-col">
+	<aside class="w-64 bg-(--color-forest) flex-shrink-0 hidden lg:flex flex-col">
 		<div class="p-6 border-b border-white/10">
 			<a href="/" class="block">
 				<p class="font-serif text-xl text-white">Thai Head Spa</p>
-				<p class="font-sans text-xs tracking-[0.3em] uppercase text-[--color-gold] mt-0.5">Administration</p>
+				<p class="font-sans text-xs tracking-[0.3em] uppercase text-(--color-gold) mt-0.5">Administration</p>
 			</a>
 		</div>
 		<nav class="flex-1 p-4 space-y-1">
@@ -50,7 +50,7 @@
 	</aside>
 
 	<!-- Mobile top nav -->
-	<div class="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[--color-forest] px-4 py-3 flex items-center justify-between">
+	<div class="lg:hidden fixed top-0 left-0 right-0 z-50 bg-(--color-forest) px-4 py-3 flex items-center justify-between">
 		<a href="/admin" class="font-serif text-white">Admin</a>
 		<a href="/" class="font-sans text-xs text-white/60">Voir le site</a>
 	</div>

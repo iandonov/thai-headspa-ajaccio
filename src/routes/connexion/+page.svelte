@@ -7,16 +7,16 @@
 	<title>Connexion — Thai Head Spa Ajaccio</title>
 </svelte:head>
 
-<div class="min-h-screen bg-[--color-cream] flex items-center justify-center px-4 pt-20">
+<div class="relative bg-fixed-img min-h-screen flex items-center justify-center px-4 pt-24 pb-12" style="background-image: linear-gradient(rgba(26,51,41,0.72), rgba(26,51,41,0.80)), url('/images/bg-water.jpg');">
 	<div class="w-full max-w-md">
 		<!-- Card -->
-		<div class="bg-white rounded-[--radius-card] shadow-[--shadow-card] overflow-hidden">
+		<div class="glass-panel rounded-(--radius-card) overflow-hidden">
 			<!-- Header -->
-			<div class="bg-[--color-forest] px-8 py-10 text-center">
+			<div class="glass-dark px-8 py-10 text-center">
 				<a href="/" class="inline-block mb-4">
 					<span class="font-serif text-2xl text-white">Thai Head Spa</span>
 					<br />
-					<span class="font-sans text-xs tracking-[0.3em] uppercase text-[--color-gold]">Ajaccio</span>
+					<span class="font-sans text-xs tracking-[0.3em] uppercase text-(--color-gold)">Ajaccio</span>
 				</a>
 				<h1 class="font-serif text-2xl text-white mt-2">Bienvenue</h1>
 				<p class="font-sans text-sm text-white/60 mt-1">Connectez-vous à votre espace personnel</p>
@@ -31,7 +31,7 @@
 				{/if}
 
 				<div>
-					<label for="email" class="block font-sans text-xs tracking-wider uppercase text-[--color-stone] mb-2">Email</label>
+					<label for="email" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Email</label>
 					<input
 						id="email"
 						type="email"
@@ -44,7 +44,7 @@
 				</div>
 
 				<div>
-					<label for="password" class="block font-sans text-xs tracking-wider uppercase text-[--color-stone] mb-2">Mot de passe</label>
+					<label for="password" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Mot de passe</label>
 					<input
 						id="password"
 						type="password"
@@ -60,9 +60,9 @@
 					Se connecter
 				</button>
 
-				<p class="text-center font-sans text-sm text-[--color-stone]">
+				<p class="text-center font-sans text-sm text-(--color-stone)">
 					Pas encore de compte ?
-					<a href="/inscription" class="text-[--color-gold] hover:underline">Créer un compte</a>
+					<a href="/inscription" class="text-(--color-gold) hover:underline">Créer un compte</a>
 				</p>
 			</form>
 		</div>

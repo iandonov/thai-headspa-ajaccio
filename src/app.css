@@ -44,31 +44,31 @@
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center gap-2 px-8 py-3 bg-[--color-forest] text-white font-sans text-sm tracking-widest uppercase rounded-sm transition-all duration-300 hover:bg-[--color-forest-light] hover:shadow-lg hover:-translate-y-0.5;
+    @apply inline-flex items-center gap-2 px-8 py-3 bg-forest text-white font-sans text-sm tracking-widest uppercase rounded-sm transition-all duration-300 hover:bg-forest-light hover:shadow-lg hover:-translate-y-0.5;
   }
 
   .btn-outline {
-    @apply inline-flex items-center gap-2 px-8 py-3 border border-[--color-gold] text-[--color-gold] font-sans text-sm tracking-widest uppercase rounded-sm transition-all duration-300 hover:bg-[--color-gold] hover:text-white hover:-translate-y-0.5;
+    @apply inline-flex items-center gap-2 px-8 py-3 border border-(--color-gold) text-(--color-gold) font-sans text-sm tracking-widest uppercase rounded-sm transition-all duration-300 hover:bg-(--color-gold) hover:text-white hover:-translate-y-0.5;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center gap-2 px-6 py-2.5 text-[--color-forest] font-sans text-sm tracking-wider hover:text-[--color-gold] transition-colors duration-200;
+    @apply inline-flex items-center gap-2 px-6 py-2.5 text-(--color-forest) font-sans text-sm tracking-wider hover:text-(--color-gold) transition-colors duration-200;
   }
 
   .section-heading {
-    @apply font-serif text-4xl md:text-5xl text-[--color-charcoal] leading-tight;
+    @apply font-serif text-4xl md:text-5xl text-(--color-charcoal) leading-tight;
   }
 
   .section-subheading {
-    @apply font-sans text-sm tracking-[0.25em] uppercase text-[--color-gold] mb-3;
+    @apply font-sans text-sm tracking-[0.25em] uppercase text-(--color-gold) mb-3;
   }
 
   .card {
-    @apply bg-white rounded-[--radius-card] shadow-[--shadow-soft] overflow-hidden transition-all duration-300 hover:shadow-[--shadow-card] hover:-translate-y-1;
+    @apply bg-white rounded-(--radius-card) shadow-(--shadow-soft) overflow-hidden transition-all duration-300 hover:shadow-(--shadow-card) hover:-translate-y-1;
   }
 
   .input-field {
-    @apply w-full px-4 py-3 bg-white border border-[--color-sand] rounded-sm text-[--color-charcoal] placeholder:text-stone-400 focus:outline-none focus:border-[--color-gold] transition-colors duration-200;
+    @apply w-full px-4 py-3 bg-white border border-(--color-sand) rounded-sm text-(--color-charcoal) placeholder:text-stone-400 focus:outline-none focus:border-(--color-gold) transition-colors duration-200;
   }
 
   .divider-ornament {
@@ -78,8 +78,70 @@
   .divider-ornament::before,
   .divider-ornament::after {
     content: '';
-    @apply flex-1 h-px bg-[--color-sand];
+    @apply flex-1 h-px bg-(--color-sand);
   }
+
+  /* Translucent frosted panels. Explicit rgba() (not Tailwind opacity
+     modifiers on CSS-var colors, which don't apply reliably) so the panels
+     stay opaque enough for body text to be readable over busy imagery. */
+  .glass-panel {
+    background-color: rgba(254, 252, 249, 0.95); /* warm-white */
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+  }
+
+  .glass-card {
+    background-color: rgba(255, 255, 255, 0.94);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
+    transition: background-color 0.3s, box-shadow 0.3s, transform 0.3s;
+  }
+  .glass-card:hover {
+    background-color: #ffffff;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
+  }
+
+  /* Dark translucent panel for content over light imagery */
+  .glass-dark {
+    background-color: rgba(45, 74, 62, 0.9); /* forest */
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Fullscreen YouTube background video (covers viewport without letterboxing) */
+.yt-bg {
+  overflow: hidden;
+}
+.yt-bg iframe {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100vw;
+  height: 56.25vw;      /* 16:9 height across full width */
+  min-width: 177.78vh;  /* 16:9 width across full height */
+  min-height: 100vh;
+  transform: translate(-50%, -50%);
+  border: 0;
+  pointer-events: none;
+}
+
+/* Fixed parallax background image layer */
+.bg-fixed-img {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+/* iOS / mobile: background-attachment: fixed is unreliable — fall back to scroll */
+@media (max-width: 768px) {
+  .bg-fixed-img { background-attachment: scroll; }
 }
 
 /* Scrollbar */

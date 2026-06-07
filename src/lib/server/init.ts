@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from './db/schema';
-import { seedDatabase } from './db/seed';
+import { seedDatabase, seedPackages } from './db/seed';
 
 let initialized = false;
 
@@ -37,6 +37,7 @@ export function initDatabase() {
 			duration INTEGER NOT NULL,
 			price REAL NOT NULL,
 			category TEXT NOT NULL DEFAULT 'massage',
+			options TEXT,
 			image_url TEXT,
 			active INTEGER NOT NULL DEFAULT 1,
 			sort_order INTEGER NOT NULL DEFAULT 0
@@ -74,5 +75,12 @@ export function initDatabase() {
 		);
 	`);
 
+	// Migration: add `options` column to existing service tables (pre-formules DBs)
+	const cols = sqlite.prepare(`PRAGMA table_info(services)`).all() as { name: string }[];
+	if (!cols.some((c) => c.name === 'options')) {
+		sqlite.exec(`ALTER TABLE services ADD COLUMN options TEXT`);
+	}
+
 	seedDatabase();
+	seedPackages();
 }

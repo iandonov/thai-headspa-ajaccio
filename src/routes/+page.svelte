@@ -2,7 +2,31 @@
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
 
-	const featured = data.services.slice(0, 3);
+	const featured = data.services.filter((s) => s.category !== 'formule').slice(0, 3);
+
+	type Formule = (typeof data.services)[number] & { optionList: string[] };
+	const formules: Formule[] = data.services
+		.filter((s) => s.category === 'formule')
+		.map((s) => {
+			let optionList: string[] = [];
+			try {
+				optionList = s.options ? JSON.parse(s.options) : [];
+			} catch {
+				optionList = [];
+			}
+			return { ...s, optionList };
+		});
+
+	// Selectable formule state
+	let selectedFormuleId = $state<number | null>(formules[0]?.id ?? null);
+	let chosenOptions = $state<Record<number, string>>({});
+
+	const selectedFormule = $derived(formules.find((f) => f.id === selectedFormuleId));
+
+	function reservationHref(f: Formule) {
+		const opt = chosenOptions[f.id];
+		return `/reservation?service=${f.id}` + (opt ? `&option=${encodeURIComponent(opt)}` : '');
+	}
 
 	const testimonials = [
 		{
@@ -33,33 +57,43 @@
 	<title>Thai Head Spa & Massage Ajaccio — Soins Thaïlandais Traditionnels</title>
 </svelte:head>
 
-<!-- HERO -->
+<!-- HERO with looping background video (autoplays, restarts from the beginning when it ends) -->
 <section class="relative min-h-screen flex items-center justify-center overflow-hidden">
-	<div class="absolute inset-0 bg-gradient-to-br from-[#1a3329] via-[#2d4a3e] to-[#1c2e28]"></div>
-	<div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23c9a96e\' fill-opacity=\'0.4\'%3E%3Ccircle cx=\'30\' cy=\'30\' r=\'1\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');"></div>
-	<div class="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[--color-gold]/10 rounded-full blur-[120px] pointer-events-none"></div>
+	<video
+		class="absolute inset-0 w-full h-full object-cover"
+		autoplay
+		muted
+		loop
+		playsinline
+		poster="/images/hero-poster.jpg"
+	>
+		<source src="/videos/hero.mp4" type="video/mp4" />
+	</video>
+	<!-- Light neutral scrim (no green tint) — keeps the video visible while the
+		 centered title stays legible via a soft radial darkening behind the text -->
+	<div class="absolute inset-0 pointer-events-none" style="background: radial-gradient(ellipse 70% 55% at 50% 45%, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.22) 55%, rgba(0,0,0,0.10) 100%);"></div>
 
 	<div class="relative z-10 text-center px-6 max-w-4xl mx-auto animate-fade-up">
-		<p class="font-sans text-xs tracking-[0.4em] uppercase text-[--color-gold] mb-6">
+		<p class="font-sans text-xs tracking-[0.4em] uppercase text-[#f0d49b] mb-6 drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]">
 			{data.cms.hero_subtitle ?? 'Thai Head Spa & Massage'}
 		</p>
-		<h1 class="font-serif text-5xl md:text-7xl text-white leading-[1.1] mb-6">
+		<h1 class="font-serif text-5xl md:text-7xl text-white leading-[1.1] mb-6 drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)]">
 			{data.cms.hero_title ?? 'Votre Sanctuaire de Bien-Être'}
 		</h1>
 		<div class="flex items-center justify-center gap-4 my-8">
-			<div class="h-px w-16 bg-[--color-gold]/40"></div>
-			<span class="text-[--color-gold]">✦</span>
-			<div class="h-px w-16 bg-[--color-gold]/40"></div>
+			<div class="h-px w-16 bg-(--color-gold)/40"></div>
+			<span class="text-(--color-gold)">✦</span>
+			<div class="h-px w-16 bg-(--color-gold)/40"></div>
 		</div>
-		<p class="font-sans text-lg text-white/70 leading-relaxed max-w-xl mx-auto mb-10">
+		<p class="font-sans text-lg text-white/80 leading-relaxed max-w-xl mx-auto mb-10 drop-shadow-[0_2px_12px_rgba(0,0,0,0.4)]">
 			{data.cms.hero_tagline ?? "Découvrez l'art ancestral du soin capillaire thaïlandais au cœur d'Ajaccio"}
 		</p>
 		<div class="flex flex-col sm:flex-row gap-4 justify-center">
 			<a href="/reservation" class="btn-primary !bg-[#c9a96e] hover:!bg-[#a07840] !border-0 px-10 py-4 text-sm">
 				Réserver un Soin
 			</a>
-			<a href="/services" class="inline-flex items-center gap-2 px-10 py-4 border border-white/40 text-white text-sm tracking-widest uppercase rounded-sm transition-all duration-300 hover:bg-white/10 hover:border-white">
-				Découvrir nos Soins
+			<a href="#formules" class="inline-flex items-center gap-2 px-10 py-4 border border-white/40 text-white text-sm tracking-widest uppercase rounded-sm transition-all duration-300 hover:bg-white/10 hover:border-white">
+				Nos Formules
 			</a>
 		</div>
 	</div>
@@ -73,58 +107,57 @@
 </section>
 
 <!-- INFO STRIP -->
-<section class="bg-[--color-forest] py-5">
+<section class="bg-(--color-forest) py-5">
 	<div class="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12 text-center">
 		<div class="flex items-center gap-3">
-			<span class="text-[--color-gold]">✦</span>
+			<span class="text-(--color-gold)">✦</span>
 			<span class="font-sans text-sm text-white/70 tracking-wider">Sur rendez-vous uniquement</span>
 		</div>
 		<div class="hidden sm:block w-px h-6 bg-white/20"></div>
 		<div class="flex items-center gap-3">
-			<span class="text-[--color-gold]">✦</span>
+			<span class="text-(--color-gold)">✦</span>
 			<span class="font-sans text-sm text-white/70 tracking-wider">05 rue Comte Bacciochi, Ajaccio</span>
 		</div>
 		<div class="hidden sm:block w-px h-6 bg-white/20"></div>
 		<div class="flex items-center gap-3">
-			<span class="text-[--color-gold]">✦</span>
-			<a href="tel:+33607949663" class="font-sans text-sm text-white/70 hover:text-[--color-gold] transition-colors tracking-wider">06 07 94 96 63</a>
+			<span class="text-(--color-gold)">✦</span>
+			<a href="tel:+33607949663" class="font-sans text-sm text-white/70 hover:text-(--color-gold) transition-colors tracking-wider">06 07 94 96 63</a>
 		</div>
 	</div>
 </section>
 
-<!-- ABOUT -->
-<section class="py-24 bg-[--color-warm-white]">
-	<div class="max-w-7xl mx-auto px-6">
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-			<div class="relative order-2 lg:order-1">
-				<div class="relative bg-gradient-to-br from-[--color-sand]/40 to-[--color-cream] rounded-[--radius-card] aspect-[4/5] flex items-center justify-center overflow-hidden">
-					<div class="text-center p-8">
-						<div class="w-24 h-24 border border-[--color-gold]/50 rounded-full flex items-center justify-center mx-auto mb-6">
-							<span class="text-[--color-gold] text-4xl">✿</span>
-						</div>
-						<p class="font-serif text-3xl text-[--color-forest]">Thai Head Spa</p>
-						<p class="font-sans text-xs tracking-[0.3em] uppercase text-[--color-gold] mt-2">Ajaccio · Corse</p>
-						<div class="mt-6 space-y-2 text-sm text-[--color-stone]">
-							<p>Soins Capillaires Thaïlandais</p>
-							<p>Massages · Réflexologie</p>
-							<p>Gua-Sha · Aromathérapie</p>
-						</div>
+<!-- ABOUT — translucent panel over fixed background -->
+<section class="relative bg-fixed-img py-28" style="background-image: linear-gradient(rgba(26,51,41,0.35), rgba(26,51,41,0.35)), url('/images/bg-stones.jpg');">
+	<div class="max-w-5xl mx-auto px-6">
+		<div class="glass-panel rounded-(--radius-card) p-10 md:p-14">
+			<div class="grid grid-cols-1 lg:grid-cols-5 gap-10 items-center">
+				<div class="lg:col-span-3">
+					<p class="section-subheading">Notre Histoire</p>
+					<h2 class="section-heading mb-6">{data.cms.about_title ?? "L'Art du Soin Thaïlandais"}</h2>
+					<div class="w-12 h-0.5 bg-(--color-gold) mb-8"></div>
+					{#each (data.cms.about_body ?? '').split('\n\n').filter(Boolean) as paragraph}
+						<p class="font-sans text-base text-(--color-stone) leading-relaxed mb-4">{paragraph}</p>
+					{/each}
+					<div class="mt-8 flex flex-wrap gap-4">
+						<a href="/about" class="btn-outline">En savoir plus</a>
+						<a href="/reservation" class="btn-ghost">Réserver →</a>
 					</div>
 				</div>
-				<div class="absolute -top-4 -left-4 w-16 h-16 border-l-2 border-t-2 border-[--color-gold]"></div>
-				<div class="absolute -bottom-4 -right-4 w-16 h-16 border-r-2 border-b-2 border-[--color-gold]"></div>
-			</div>
-
-			<div class="order-1 lg:order-2">
-				<p class="section-subheading">Notre Histoire</p>
-				<h2 class="section-heading mb-6">{data.cms.about_title ?? "L'Art du Soin Thaïlandais"}</h2>
-				<div class="w-12 h-0.5 bg-[--color-gold] mb-8"></div>
-				{#each (data.cms.about_body ?? '').split('\n\n').filter(Boolean) as paragraph}
-					<p class="font-sans text-base text-[--color-stone] leading-relaxed mb-4">{paragraph}</p>
-				{/each}
-				<div class="mt-8 flex flex-wrap gap-4">
-					<a href="/about" class="btn-outline">En savoir plus</a>
-					<a href="/reservation" class="btn-ghost">Réserver →</a>
+				<div class="lg:col-span-2 hidden lg:block">
+					<div class="relative bg-gradient-to-br from-(--color-sand)/40 to-(--color-cream) rounded-(--radius-card) aspect-[4/5] flex items-center justify-center overflow-hidden border border-white/50">
+						<div class="text-center p-8">
+							<div class="w-20 h-20 border border-(--color-gold)/50 rounded-full flex items-center justify-center mx-auto mb-5">
+								<span class="text-(--color-gold) text-3xl">✿</span>
+							</div>
+							<p class="font-serif text-2xl text-(--color-forest)">Thai Head Spa</p>
+							<p class="font-sans text-xs tracking-[0.3em] uppercase text-(--color-gold) mt-2">Ajaccio · Corse</p>
+							<div class="mt-5 space-y-1.5 text-sm text-(--color-stone)">
+								<p>Soins Capillaires Thaïlandais</p>
+								<p>Massages · Réflexologie</p>
+								<p>Gua-Sha · Aromathérapie</p>
+							</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -132,35 +165,35 @@
 </section>
 
 <!-- SERVICES PREVIEW -->
-<section class="py-24 bg-[--color-cream]">
+<section class="py-24 bg-(--color-cream)">
 	<div class="max-w-7xl mx-auto px-6">
 		<div class="text-center mb-16">
 			<p class="section-subheading">Nos Prestations</p>
 			<h2 class="section-heading">Soins &amp; Massages</h2>
 			<div class="flex items-center justify-center gap-4 mt-4 mb-6">
-				<div class="h-px w-16 bg-[--color-sand]"></div>
-				<span class="text-[--color-gold]">✦</span>
-				<div class="h-px w-16 bg-[--color-sand]"></div>
+				<div class="h-px w-16 bg-(--color-sand)"></div>
+				<span class="text-(--color-gold)">✦</span>
+				<div class="h-px w-16 bg-(--color-sand)"></div>
 			</div>
-			<p class="font-sans text-base text-[--color-stone] max-w-lg mx-auto">
+			<p class="font-sans text-base text-(--color-stone) max-w-lg mx-auto">
 				Chaque soin est une invitation au voyage, une expérience unique pensée pour votre bien-être total.
 			</p>
 		</div>
 
 		<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 			{#each featured as service}
-				<a href="/services#{service.slug}" class="card group bg-white">
-					<div class="h-1.5 bg-gradient-to-r from-[--color-forest] to-[--color-forest-light]"></div>
+				<a href="/services#{service.slug}" class="card group bg-white border border-(--color-sand)">
+					<div class="h-1.5 bg-gradient-to-r from-(--color-forest) to-(--color-forest-light)"></div>
 					<div class="p-8">
 						<div class="flex justify-between items-start mb-5">
-							<span class="font-sans text-xs tracking-widest uppercase text-[--color-gold] bg-[--color-gold]/10 px-3 py-1 rounded-full">
+							<span class="font-sans text-xs tracking-widest uppercase text-(--color-gold) bg-(--color-gold)/10 px-3 py-1 rounded-full">
 								{formatDuration(service.duration)}
 							</span>
-							<span class="font-serif text-2xl text-[--color-forest]">{service.price}€</span>
+							<span class="font-serif text-2xl text-(--color-forest)">{service.price}€</span>
 						</div>
-						<h3 class="font-serif text-xl text-[--color-charcoal] mb-3 group-hover:text-[--color-forest] transition-colors">{service.name}</h3>
-						<p class="font-sans text-sm text-[--color-stone] leading-relaxed">{service.description}</p>
-						<div class="mt-6 flex items-center gap-2 text-[--color-gold] text-sm font-sans transition-all group-hover:gap-3">
+						<h3 class="font-serif text-xl text-(--color-charcoal) mb-3 group-hover:text-(--color-forest) transition-colors">{service.name}</h3>
+						<p class="font-sans text-sm text-(--color-stone) leading-relaxed">{service.description}</p>
+						<div class="mt-6 flex items-center gap-2 text-(--color-gold) text-sm font-sans transition-all group-hover:gap-3">
 							<span>Découvrir</span>
 							<span>→</span>
 						</div>
@@ -175,23 +208,104 @@
 	</div>
 </section>
 
-<!-- BOOKING CTA BANNER -->
-<section class="relative py-20 overflow-hidden bg-[--color-forest]">
-	<div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(ellipse at 20% 50%, #c9a96e 0%, transparent 60%), radial-gradient(ellipse at 80% 50%, #c9a96e 0%, transparent 60%);"></div>
+<!-- FORMULES — selectable packages over fixed background -->
+<section id="formules" class="relative bg-fixed-img py-28" style="background-image: linear-gradient(rgba(26,51,41,0.72), rgba(26,51,41,0.78)), url('/images/bg-leaves.jpg');">
+	<div class="max-w-6xl mx-auto px-6">
+		<div class="text-center mb-14">
+			<p class="section-subheading text-(--color-gold)">Nos Formules</p>
+			<h2 class="font-serif text-4xl md:text-5xl text-white leading-tight">{data.cms.formules_title ?? 'Des Formules Personnalisables'}</h2>
+			<div class="flex items-center justify-center gap-4 mt-5 mb-5">
+				<div class="h-px w-16 bg-white/25"></div>
+				<span class="text-(--color-gold)">✦</span>
+				<div class="h-px w-16 bg-white/25"></div>
+			</div>
+			<p class="font-sans text-white/70 max-w-2xl mx-auto leading-relaxed">
+				{data.cms.formules_tagline ?? 'Des formules personnalisables selon vos envies grâce à nos options exclusives.'}
+			</p>
+		</div>
+
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+			{#each formules as f}
+				<div
+					role="button"
+					tabindex="0"
+					onclick={() => selectedFormuleId = f.id}
+					onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectedFormuleId = f.id; } }}
+					class="cursor-pointer text-left rounded-(--radius-card) p-7 flex flex-col transition-all duration-300
+						{selectedFormuleId === f.id
+							? 'bg-white shadow-[0_16px_56px_rgba(0,0,0,0.28)] ring-2 ring-(--color-gold) -translate-y-1'
+							: 'glass-card text-(--color-charcoal)'}"
+				>
+					<div class="flex justify-between items-center mb-3">
+						<span class="font-sans text-xs tracking-widest uppercase text-(--color-gold) bg-(--color-gold)/10 px-3 py-1 rounded-full">
+							{formatDuration(f.duration)}
+						</span>
+						<span class="font-serif text-2xl text-(--color-forest)">{f.price}€</span>
+					</div>
+					<h3 class="font-serif text-xl text-(--color-charcoal) mb-2">{f.name}</h3>
+					<p class="font-sans text-sm text-(--color-stone) leading-relaxed mb-4">{f.description}</p>
+
+					{#if f.optionList.length > 0}
+						<p class="font-sans text-[0.7rem] tracking-widest uppercase text-(--color-gold) mb-2">Choisissez une option</p>
+						<div class="flex flex-wrap gap-2 mb-4">
+							{#each f.optionList as opt}
+								<span
+									role="button"
+									tabindex="0"
+									onclick={(e) => { e.stopPropagation(); selectedFormuleId = f.id; chosenOptions[f.id] = chosenOptions[f.id] === opt ? '' : opt; }}
+									onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); selectedFormuleId = f.id; chosenOptions[f.id] = chosenOptions[f.id] === opt ? '' : opt; } }}
+									class="cursor-pointer font-sans text-xs px-3 py-1.5 rounded-full border transition-all duration-150
+										{chosenOptions[f.id] === opt
+											? 'bg-(--color-forest) text-white border-(--color-forest)'
+											: 'bg-white text-(--color-charcoal) border-(--color-sand) hover:border-(--color-forest)'}"
+								>
+									{opt}
+								</span>
+							{/each}
+						</div>
+					{/if}
+
+					<a
+						href={reservationHref(f)}
+						onclick={(e) => e.stopPropagation()}
+						class="mt-auto inline-flex items-center justify-center gap-2 w-full py-3 bg-[#2d4a3e] hover:bg-[#3d6b5a] text-white font-sans text-xs font-medium tracking-widest uppercase rounded-sm transition-all duration-300"
+					>
+						Réserver cette formule →
+					</a>
+				</div>
+			{/each}
+		</div>
+
+		{#if selectedFormule}
+			<div class="mt-10 text-center">
+				<p class="font-sans text-sm text-white/70">
+					Formule sélectionnée : <span class="text-(--color-gold) font-medium">{selectedFormule.name}</span>
+					{#if chosenOptions[selectedFormule.id]}
+						<span class="text-white/50"> · option : {chosenOptions[selectedFormule.id]}</span>
+					{/if}
+				</p>
+			</div>
+		{/if}
+	</div>
+</section>
+
+<!-- BOOKING CTA BANNER — over fixed background -->
+<section class="relative bg-fixed-img py-28 overflow-hidden" style="background-image: url('/images/bg-candles.jpg');">
+	<div class="absolute inset-0 glass-dark"></div>
 	<div class="relative z-10 max-w-3xl mx-auto px-6 text-center">
-		<p class="section-subheading text-[--color-gold]">Sur Rendez-vous</p>
-		<h2 class="font-serif text-4xl md:text-5xl text-white mb-6 leading-tight">Offrez-vous un Moment<br/>Hors du Temps</h2>
-		<p class="font-sans text-white/60 mb-10 max-w-lg mx-auto leading-relaxed">
+		<p class="section-subheading text-(--color-gold)">Sur Rendez-vous</p>
+		<h2 class="font-serif text-4xl md:text-5xl text-white mb-6 leading-tight drop-shadow-[0_2px_16px_rgba(0,0,0,0.5)]">Offrez-vous un Moment<br/>Hors du Temps</h2>
+		<p class="font-sans text-white/75 mb-10 max-w-lg mx-auto leading-relaxed">
 			Réservez votre soin en ligne en quelques clics. Nous vous confirmons votre rendez-vous dans les plus brefs délais.
 		</p>
-		<a href="/reservation" class="inline-flex items-center gap-2 px-12 py-4 bg-[--color-gold] hover:bg-[--color-gold-dark] text-white font-sans text-sm tracking-widest uppercase rounded-sm transition-all duration-300 hover:shadow-lg">
+		<a href="/reservation" class="inline-flex items-center gap-2 px-12 py-4 bg-(--color-gold) hover:bg-(--color-gold-dark) text-white font-sans text-sm tracking-widest uppercase rounded-sm transition-all duration-300 hover:shadow-lg">
 			Prendre Rendez-vous
 		</a>
 	</div>
 </section>
 
-<!-- TESTIMONIALS -->
-<section class="py-24 bg-[--color-warm-white]">
+<!-- TESTIMONIALS — translucent cards over fixed background -->
+<section class="relative bg-fixed-img py-28" style="background-image: linear-gradient(rgba(250,247,242,0.82), rgba(250,247,242,0.82)), url('/images/bg-water.jpg');">
 	<div class="max-w-7xl mx-auto px-6">
 		<div class="text-center mb-16">
 			<p class="section-subheading">Avis Clients</p>
@@ -199,18 +313,18 @@
 		</div>
 		<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 			{#each testimonials as t}
-				<div class="bg-[--color-cream] rounded-[--radius-card] p-8 relative border border-[--color-sand]/50">
-					<span class="absolute top-4 left-6 font-serif text-6xl text-[--color-gold]/20 leading-none pointer-events-none">"</span>
-					<p class="font-serif text-lg text-[--color-charcoal] leading-relaxed mb-6 pt-4 italic relative z-10">
+				<div class="glass-card rounded-(--radius-card) p-8 relative">
+					<span class="absolute top-4 left-6 font-serif text-6xl text-(--color-gold)/20 leading-none pointer-events-none">"</span>
+					<p class="font-serif text-lg text-(--color-charcoal) leading-relaxed mb-6 pt-4 italic relative z-10">
 						{t.text}
 					</p>
 					<div class="flex items-center gap-3">
-						<div class="w-9 h-9 bg-[--color-gold]/20 rounded-full flex items-center justify-center flex-shrink-0">
-							<span class="font-serif text-[--color-gold] font-medium">{t.author[0]}</span>
+						<div class="w-9 h-9 bg-(--color-gold)/20 rounded-full flex items-center justify-center flex-shrink-0">
+							<span class="font-serif text-(--color-gold) font-medium">{t.author[0]}</span>
 						</div>
 						<div>
-							<p class="font-sans text-sm font-medium text-[--color-charcoal]">{t.author}</p>
-							<p class="font-sans text-xs text-[--color-stone]">{t.service}</p>
+							<p class="font-sans text-sm font-medium text-(--color-charcoal)">{t.author}</p>
+							<p class="font-sans text-xs text-(--color-stone)">{t.service}</p>
 						</div>
 					</div>
 				</div>
@@ -220,7 +334,7 @@
 </section>
 
 <!-- CONTACT STRIP -->
-<section class="bg-[--color-cream] border-t border-[--color-sand] py-16">
+<section class="bg-(--color-cream) border-t border-(--color-sand) py-16">
 	<div class="max-w-5xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
 		{#each [
 			{ icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z', label: 'Adresse', text: '05 rue Comte Bacciochi\n20 000 Ajaccio', href: null },
@@ -228,16 +342,16 @@
 			{ icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', label: 'Horaires', text: 'Mar–Ven : 9h–18h\nSam : 9h–17h', href: null },
 		] as item}
 			<div>
-				<div class="w-12 h-12 border border-[--color-gold] rounded-full flex items-center justify-center mx-auto mb-4">
-					<svg class="w-5 h-5 text-[--color-gold]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<div class="w-12 h-12 border border-(--color-gold) rounded-full flex items-center justify-center mx-auto mb-4">
+					<svg class="w-5 h-5 text-(--color-gold)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d={item.icon} />
 					</svg>
 				</div>
-				<p class="font-serif text-lg text-[--color-charcoal] mb-2">{item.label}</p>
+				<p class="font-serif text-lg text-(--color-charcoal) mb-2">{item.label}</p>
 				{#if item.href}
-					<a href={item.href} class="font-sans text-sm text-[--color-stone] hover:text-[--color-gold] transition-colors whitespace-pre-line">{item.text}</a>
+					<a href={item.href} class="font-sans text-sm text-(--color-stone) hover:text-(--color-gold) transition-colors whitespace-pre-line">{item.text}</a>
 				{:else}
-					<p class="font-sans text-sm text-[--color-stone] whitespace-pre-line leading-relaxed">{item.text}</p>
+					<p class="font-sans text-sm text-(--color-stone) whitespace-pre-line leading-relaxed">{item.text}</p>
 				{/if}
 			</div>
 		{/each}

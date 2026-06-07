@@ -10,7 +10,39 @@
       "Bash(npm create *)",
       "Bash(npx sv *)",
       "Bash(npm install *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(git push *)",
+      "Bash(mkdir -p static/videos static/images)",
+      "Bash(curl -sL -o static/images/test.jpg \"https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=1920&q=80\" -w \"IMG_HTTP:%{http_code} SIZE:%{size_download}\\\\n\" --max-time 60)",
+      "Bash(curl -sL -o static/videos/test.mp4 \"https://assets.mixkit.co/videos/4779/4779-720.mp4\" -w \"VID_HTTP:%{http_code} SIZE:%{size_download}\\\\n\" --max-time 120)",
+      "WebSearch",
+      "WebFetch(domain:mixkit.co)",
+      "Bash(ffmpeg -version)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(cp static/videos/cand-287.mp4 static/videos/hero.mp4)",
+      "Bash(rm -f static/videos/cand-*.mp4 static/videos/test.mp4 static/images/test.jpg)",
+      "Bash(curl -s http://localhost:5173/ -o /tmp/home.html -w \"HTTP:%{http_code} SIZE:%{size_download}\\\\n\")",
+      "Read(//tmp/**)",
+      "Bash(node -e \"const db=require\\('better-sqlite3'\\)\\('spa.db'\\); console.log\\(db.prepare\\(\\\\\"select id from services where slug='massage-personnalise'\\\\\"\\).get\\(\\).id\\)\")",
+      "Bash(curl -s 'http://localhost:5173/reservation?service=__TRACKED_VAR__&option=Aromath%C3%A9rapie' -o /tmp/resa.html -w 'HTTP:%{http_code}\\\\n')",
+      "Bash(curl -sL \"https://lotusheadspala.com/\" -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" -o /tmp/lotus.html -w \"HTTP:%{http_code} SIZE:%{size_download}\\\\n\" --max-time 60)",
+      "Bash(grep -oiE '\\(https?:\\)?//[^\"'\"'\"' ]+\\\\.\\(mp4|webm|m3u8\\)' /tmp/lotus.html)",
+      "Bash(curl -sL --compressed \"https://lotusheadspala.com/\" -H \"Accept-Encoding: gzip, deflate\" -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 Chrome/120\" -o /tmp/lotus.html -w \"HTTP:%{http_code} SIZE:%{size_download}\\\\n\" --max-time 60)",
+      "Bash(curl -s \"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=7BGNAGahig8&format=json\" -w \"\\\\nHTTP:%{http_code}\\\\n\" --max-time 30)",
+      "Bash(rm -f static/videos/hero.mp4)",
+      "Bash(rmdir static/videos)",
+      "Bash(npx svelte-check *)",
+      "Read(//c/Users/iando/Videos/**)",
+      "Read(//mnt/c/Users/iando/Videos/**)",
+      "Bash(cd c:/Source/Personal/SPA && mkdir -p static/videos && cp \"/c/Users/iando/Videos/Video Project.mp4\" static/videos/hero.mp4 && ls -la static/videos/)",
+      "Bash(curl -s \"http://localhost:5173/src/app.css\" -o /tmp/appcss.js)",
+      "Bash(grep -oE '\\\\\\\\?\\\\.bg-\\\\\\\\?\\\\[--color-forest\\\\\\\\?\\\\][^}]*background[^;]*;' /tmp/appcss.js)",
+      "Bash(grep -oE 'bg-forest[^}]{0,80}' /tmp/appcss.js)",
+      "Bash(grep -oE '[^,{}]*\\\\{background-color:var\\\\\\(--color-forest\\\\\\)\\\\}' /tmp/appcss.js)",
+      "Bash(grep -c 'bg-\\\\\\\\\\\\[--color-forest' /tmp/appcss.js)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\iando\\Videos"
     ]
   }
 }

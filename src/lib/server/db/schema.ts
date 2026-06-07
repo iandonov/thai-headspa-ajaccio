@@ -20,6 +20,7 @@ export const services = sqliteTable('services', {
 	duration: integer('duration').notNull(), // minutes
 	price: real('price').notNull(),
 	category: text('category').notNull().default('massage'),
+	options: text('options'), // JSON array of selectable option labels (for formules)
 	imageUrl: text('image_url'),
 	active: integer('active', { mode: 'boolean' }).notNull().default(true),
 	sortOrder: integer('sort_order').notNull().default(0),

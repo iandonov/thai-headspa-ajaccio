@@ -11,11 +11,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.all();
 
 	const preselectedId = url.searchParams.get('service');
+	const preselectedOption = url.searchParams.get('option');
 
 	return {
 		services: allServices,
 		user: locals.user,
 		preselectedServiceId: preselectedId ? Number(preselectedId) : null,
+		preselectedOption: preselectedOption || null,
 	};
 };
 
@@ -25,7 +27,9 @@ export const actions: Actions = {
 		const serviceId = Number(data.get('serviceId'));
 		const date = String(data.get('date') || '');
 		const startTime = String(data.get('startTime') || '');
-		const notes = String(data.get('notes') || '');
+		const option = String(data.get('option') || '').trim();
+		const userNotes = String(data.get('notes') || '').trim();
+		const notes = [option ? `Option choisie : ${option}` : '', userNotes].filter(Boolean).join('\n');
 
 		// Guest or logged in
 		const guestName = String(data.get('guestName') || '').trim();
