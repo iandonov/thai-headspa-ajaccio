@@ -20,7 +20,21 @@ export const actions: Actions = {
 		const active = data.get('active') === 'on';
 
 		if (!id) return fail(400);
-		db.update(services).set({ price, duration, name, description, active }).where(eq(services.id, id)).run();
+
+		const values: Partial<typeof services.$inferInsert> = { price, duration, name, description, active };
+
+		// Options field is only present for formules — parse newline list into a
+		// JSON array (or null when empty).
+		const optionsRaw = data.get('options');
+		if (optionsRaw !== null) {
+			const list = String(optionsRaw)
+				.split('\n')
+				.map((s) => s.trim())
+				.filter(Boolean);
+			values.options = list.length ? JSON.stringify(list) : null;
+		}
+
+		db.update(services).set(values).where(eq(services.id, id)).run();
 		return { success: true };
 	},
 };

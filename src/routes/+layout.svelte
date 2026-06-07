@@ -25,9 +25,14 @@
 		if (href === '/') return $page.url.pathname === '/';
 		return $page.url.pathname.startsWith(href);
 	}
+
+	// The admin section ships its own sidebar layout — suppress the public
+	// header and footer there so the two navs don't overlap.
+	const isAdmin = $derived($page.url.pathname.startsWith('/admin'));
 </script>
 
 <div class="min-h-screen flex flex-col">
+	{#if !isAdmin}
 	<!-- Navigation -->
 	<header
 		class="fixed top-0 left-0 right-0 z-50 transition-all duration-500 {scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm py-3' : 'bg-transparent py-5'}"
@@ -107,12 +112,14 @@
 			</div>
 		{/if}
 	</header>
+	{/if}
 
 	<!-- Page Content -->
 	<main class="flex-1">
 		{@render children()}
 	</main>
 
+	{#if !isAdmin}
 	<!-- Footer -->
 	<footer class="bg-(--color-forest) text-white/80">
 		<div class="max-w-7xl mx-auto px-6 py-16">
@@ -170,4 +177,5 @@
 			</div>
 		</div>
 	</footer>
+	{/if}
 </div>

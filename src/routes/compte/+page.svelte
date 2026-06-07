@@ -1,10 +1,18 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { page } from '$app/stores';
+	import { enhance } from '$app/forms';
 	let { data }: { data: PageData } = $props();
 
+	let cancellingId = $state<number | null>(null);
+
+	// Set when a non-admin was redirected here from the admin area.
+	const deniedAdmin = $derived($page.url.searchParams.get('denied') === 'admin');
+
 	const now = new Date().toISOString().slice(0, 10);
-	const upcoming = data.bookings.filter(b => b.date >= now && b.status !== 'cancelled');
-	const past = data.bookings.filter(b => b.date < now || b.status === 'completed');
+	// Derived so the lists refresh after an inline cancellation re-fetches data.
+	const upcoming = $derived(data.bookings.filter(b => b.date >= now && b.status !== 'cancelled' && b.status !== 'completed'));
+	const past = $derived(data.bookings.filter(b => b.date < now || b.status === 'completed' || b.status === 'cancelled'));
 
 	const statusLabel: Record<string, string> = {
 		pending: 'En attente',
@@ -31,6 +39,16 @@
 			<p class="section-subheading text-(--color-gold)">Espace personnel</p>
 			<h1 class="font-serif text-4xl md:text-5xl text-white leading-tight drop-shadow-[0_2px_16px_rgba(0,0,0,0.5)]">Bonjour, {data.user?.firstName}</h1>
 		</div>
+
+		{#if deniedAdmin}
+			<div class="flex items-start gap-3 bg-amber-50/95 border border-amber-200 text-amber-800 rounded-(--radius-card) px-5 py-4 mb-8">
+				<svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v4m0 4h.01M10.29 3.86l-8.18 14.14A1.5 1.5 0 003.41 20.5h17.18a1.5 1.5 0 001.3-2.5L13.71 3.86a1.5 1.5 0 00-2.42 0z" /></svg>
+				<div>
+					<p class="font-sans text-sm font-medium">Accès réservé à l'administration</p>
+					<p class="font-sans text-xs mt-0.5">Votre compte ne dispose pas des droits d'administrateur. Connectez-vous avec un compte administrateur pour accéder à cette section.</p>
+				</div>
+			</div>
+		{/if}
 
 		<!-- Quick actions -->
 		<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
@@ -89,6 +107,26 @@
 									{statusLabel[booking.status]}
 								</span>
 								<span class="font-serif text-lg text-(--color-gold)">{booking.servicePrice}€</span>
+								{#if booking.status === 'pending' || booking.status === 'confirmed'}
+									<form
+										method="POST"
+										action="?/cancel"
+										use:enhance={() => {
+											cancellingId = booking.id;
+											return async ({ update }) => { await update(); cancellingId = null; };
+										}}
+										onsubmit={(e) => { if (!confirm('Annuler ce rendez-vous ?')) e.preventDefault(); }}
+									>
+										<input type="hidden" name="id" value={booking.id} />
+										<button
+											type="submit"
+											disabled={cancellingId === booking.id}
+											class="font-sans text-xs text-red-500 hover:text-red-600 hover:underline disabled:opacity-50 transition-colors"
+										>
+											{cancellingId === booking.id ? 'Annulation…' : 'Annuler'}
+										</button>
+									</form>
+								{/if}
 							</div>
 						</div>
 					{/each}

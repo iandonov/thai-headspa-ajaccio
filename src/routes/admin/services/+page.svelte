@@ -8,6 +8,17 @@
 		if (min === 60) return '1h';
 		return Math.floor(min/60) + 'h' + (min%60||'');
 	}
+
+	// Formule options are stored as a JSON array; show one per line for editing.
+	function optionsToText(raw: string | null): string {
+		if (!raw) return '';
+		try {
+			const v = JSON.parse(raw);
+			return Array.isArray(v) ? v.join('\n') : '';
+		} catch {
+			return '';
+		}
+	}
 </script>
 
 <svelte:head><title>Soins & Tarifs — Admin</title></svelte:head>
@@ -53,6 +64,14 @@
 					<label class="block font-sans text-xs uppercase tracking-wider text-(--color-stone) mb-1">Description courte</label>
 					<input type="text" name="description" value={service.description} class="input-field text-sm" />
 				</div>
+				{#if service.category === 'formule'}
+					<div class="sm:col-span-4">
+						<label class="block font-sans text-xs uppercase tracking-wider text-(--color-stone) mb-1">
+							Options incluses dans la formule <span class="normal-case text-(--color-stone)/60">(une par ligne)</span>
+						</label>
+						<textarea name="options" rows="3" class="input-field text-sm resize-none" placeholder="Aromathérapie — pour apaiser corps et esprit&#10;Massage Thaï-oil — rééquilibrage énergétique">{optionsToText(service.options)}</textarea>
+					</div>
+				{/if}
 			</form>
 		</div>
 	{/each}

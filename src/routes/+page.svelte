@@ -17,16 +17,6 @@
 			return { ...s, optionList };
 		});
 
-	// Selectable formule state
-	let selectedFormuleId = $state<number | null>(formules[0]?.id ?? null);
-	let chosenOptions = $state<Record<number, string>>({});
-
-	const selectedFormule = $derived(formules.find((f) => f.id === selectedFormuleId));
-
-	function reservationHref(f: Formule) {
-		const opt = chosenOptions[f.id];
-		return `/reservation?service=${f.id}` + (opt ? `&option=${encodeURIComponent(opt)}` : '');
-	}
 
 	const testimonials = [
 		{
@@ -226,15 +216,10 @@
 
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 			{#each formules as f}
-				<div
-					role="button"
-					tabindex="0"
-					onclick={() => selectedFormuleId = f.id}
-					onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectedFormuleId = f.id; } }}
-					class="cursor-pointer text-left rounded-(--radius-card) p-7 flex flex-col transition-all duration-300
-						{selectedFormuleId === f.id
-							? 'bg-white shadow-[0_16px_56px_rgba(0,0,0,0.28)] ring-2 ring-(--color-gold) -translate-y-1'
-							: 'glass-card text-(--color-charcoal)'}"
+				<!-- Whole card links straight to booking for this formule -->
+				<a
+					href="/reservation?service={f.id}"
+					class="group glass-card text-(--color-charcoal) cursor-pointer text-left rounded-(--radius-card) p-7 flex flex-col transition-all duration-300 hover:-translate-y-1 hover:ring-2 hover:ring-(--color-gold) hover:shadow-[0_16px_56px_rgba(0,0,0,0.28)]"
 				>
 					<div class="flex justify-between items-center mb-3">
 						<span class="font-sans text-xs tracking-widest uppercase text-(--color-gold) bg-(--color-gold)/10 px-3 py-1 rounded-full">
@@ -246,46 +231,20 @@
 					<p class="font-sans text-sm text-(--color-stone) leading-relaxed mb-4">{f.description}</p>
 
 					{#if f.optionList.length > 0}
-						<p class="font-sans text-[0.7rem] tracking-widest uppercase text-(--color-gold) mb-2">Choisissez une option</p>
+						<p class="font-sans text-[0.7rem] tracking-widest uppercase text-(--color-gold) mb-2">Options sélectionnées</p>
 						<div class="flex flex-wrap gap-2 mb-4">
 							{#each f.optionList as opt}
-								<span
-									role="button"
-									tabindex="0"
-									onclick={(e) => { e.stopPropagation(); selectedFormuleId = f.id; chosenOptions[f.id] = chosenOptions[f.id] === opt ? '' : opt; }}
-									onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); selectedFormuleId = f.id; chosenOptions[f.id] = chosenOptions[f.id] === opt ? '' : opt; } }}
-									class="cursor-pointer font-sans text-xs px-3 py-1.5 rounded-full border transition-all duration-150
-										{chosenOptions[f.id] === opt
-											? 'bg-(--color-forest) text-white border-(--color-forest)'
-											: 'bg-white text-(--color-charcoal) border-(--color-sand) hover:border-(--color-forest)'}"
-								>
-									{opt}
-								</span>
+								<span class="font-sans text-xs px-3 py-1.5 rounded-full bg-(--color-cream) border border-(--color-sand) text-(--color-stone)">{opt}</span>
 							{/each}
 						</div>
 					{/if}
 
-					<a
-						href={reservationHref(f)}
-						onclick={(e) => e.stopPropagation()}
-						class="mt-auto inline-flex items-center justify-center gap-2 w-full py-3 bg-[#2d4a3e] hover:bg-[#3d6b5a] text-white font-sans text-xs font-medium tracking-widest uppercase rounded-sm transition-all duration-300"
-					>
+					<span class="mt-auto inline-flex items-center justify-center gap-2 w-full py-3 bg-[#2d4a3e] group-hover:bg-[#3d6b5a] text-white font-sans text-xs font-medium tracking-widest uppercase rounded-sm transition-all duration-300">
 						Réserver cette formule →
-					</a>
-				</div>
+					</span>
+				</a>
 			{/each}
 		</div>
-
-		{#if selectedFormule}
-			<div class="mt-10 text-center">
-				<p class="font-sans text-sm text-white/70">
-					Formule sélectionnée : <span class="text-(--color-gold) font-medium">{selectedFormule.name}</span>
-					{#if chosenOptions[selectedFormule.id]}
-						<span class="text-white/50"> · option : {chosenOptions[selectedFormule.id]}</span>
-					{/if}
-				</p>
-			</div>
-		{/if}
 	</div>
 </section>
 

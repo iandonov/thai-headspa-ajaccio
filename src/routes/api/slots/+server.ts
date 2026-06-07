@@ -2,7 +2,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db/index';
 import { availability, bookings, services } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 
 export const GET: RequestHandler = async ({ url }) => {
 	const dateStr = url.searchParams.get('date');
@@ -24,11 +24,12 @@ export const GET: RequestHandler = async ({ url }) => {
 	const [service] = db.select().from(services).where(eq(services.id, serviceId)).all();
 	if (!service) return json({ slots: [] });
 
+	// Pending and confirmed bookings both occupy a slot (cancelled ones free it).
 	const existingBookings = db.select().from(bookings)
-		.where(and(eq(bookings.date, dateStr), eq(bookings.status, 'confirmed')))
+		.where(and(eq(bookings.date, dateStr), inArray(bookings.status, ['pending', 'confirmed'])))
 		.all();
 
-	const slots: string[] = [];
+	const slots: { time: string; available: boolean }[] = [];
 	const [startH, startM] = avail.startTime.split(':').map(Number);
 	const [endH, endM] = avail.endTime.split(':').map(Number);
 	const startMinutes = startH * 60 + startM;
@@ -48,7 +49,9 @@ export const GET: RequestHandler = async ({ url }) => {
 			return t < be && slotEnd > bs;
 		});
 
-		if (!conflict) slots.push(slotStart);
+		// Return every slot in range; booked ones are flagged unavailable so the
+		// UI can show them greyed-out rather than hiding them.
+		slots.push({ time: slotStart, available: !conflict });
 	}
 
 	return json({ slots });

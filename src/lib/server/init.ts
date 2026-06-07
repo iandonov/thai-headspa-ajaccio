@@ -9,7 +9,8 @@ export function initDatabase() {
 	if (initialized) return;
 	initialized = true;
 
-	const sqlite = new Database('spa.db');
+	// Must match db/index.ts so tables are created in the same file the app queries.
+	const sqlite = new Database(process.env.DATABASE_PATH ?? 'spa.db');
 	sqlite.pragma('journal_mode = WAL');
 	sqlite.pragma('foreign_keys = ON');
 

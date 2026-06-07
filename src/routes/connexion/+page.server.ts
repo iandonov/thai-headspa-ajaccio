@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, cookies }) => {
+	default: async ({ request, cookies, url }) => {
 		const data = await request.formData();
 		const email = String(data.get('email') || '').toLowerCase().trim();
 		const password = String(data.get('password') || '');
@@ -35,6 +35,14 @@ export const actions: Actions = {
 			secure: false,
 		});
 
-		redirect(302, user.role === 'admin' ? '/admin' : '/compte');
+		// Honour ?redirectTo when present, but never let a non-admin land on an
+		// admin path (it would just bounce back). Fall back to the role default.
+		const redirectTo = url.searchParams.get('redirectTo');
+		const roleDefault = user.role === 'admin' ? '/admin' : '/compte';
+		const dest =
+			redirectTo && redirectTo.startsWith('/') && (user.role === 'admin' || !redirectTo.startsWith('/admin'))
+				? redirectTo
+				: roleDefault;
+		redirect(302, dest);
 	},
 };
