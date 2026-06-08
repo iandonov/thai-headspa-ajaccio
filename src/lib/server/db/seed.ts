@@ -1,5 +1,5 @@
 import { db } from './index';
-import { services, availability, cmsContent } from './schema';
+import { services, availability, cmsContent, closures, settings } from './schema';
 import { eq } from 'drizzle-orm';
 
 export async function seedDatabase() {
@@ -203,5 +203,76 @@ export function seedPackages() {
 	for (const c of formuleContent) {
 		const exists = db.select().from(cmsContent).where(eq(cmsContent.key, c.key)).all();
 		if (exists.length === 0) db.insert(cmsContent).values(c).run();
+	}
+}
+
+// Spa-wide settings. total_beds = how many beds/tables can be in use at once.
+export function seedSettings() {
+	const exists = db.select().from(settings).where(eq(settings.key, 'total_beds')).all();
+	if (exists.length === 0) {
+		db.insert(settings).values({ key: 'total_beds', value: '3' }).run();
+	}
+}
+
+// --- French public holidays --------------------------------------------------
+
+// Western (Gregorian) Easter Sunday — Anonymous Gregorian algorithm.
+function computeEaster(year: number): Date {
+	const a = year % 19;
+	const b = Math.floor(year / 100);
+	const c = year % 100;
+	const d = Math.floor(b / 4);
+	const e = b % 4;
+	const f = Math.floor((b + 8) / 25);
+	const g = Math.floor((b - f + 1) / 3);
+	const h = (19 * a + b - d - g + 15) % 30;
+	const i = Math.floor(c / 4);
+	const k = c % 4;
+	const l = (32 + 2 * e + 2 * i - h - k) % 7;
+	const m = Math.floor((a + 11 * h + 22 * l) / 451);
+	const month = Math.floor((h + l - 7 * m + 114) / 31); // 3=March, 4=April
+	const day = ((h + l - 7 * m + 114) % 31) + 1;
+	return new Date(Date.UTC(year, month - 1, day));
+}
+
+function fmtDate(d: Date): string {
+	const y = d.getUTCFullYear();
+	const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+	const day = String(d.getUTCDate()).padStart(2, '0');
+	return `${y}-${m}-${day}`;
+}
+
+function addDays(d: Date, n: number): Date {
+	return new Date(d.getTime() + n * 86_400_000);
+}
+
+// The 11 jours fériés observed in metropolitan France for a given year.
+export function frenchHolidays(year: number): { date: string; reason: string }[] {
+	const easter = computeEaster(year);
+	return [
+		{ date: `${year}-01-01`, reason: "Jour de l'An" },
+		{ date: fmtDate(addDays(easter, 1)), reason: 'Lundi de Pâques' },
+		{ date: `${year}-05-01`, reason: 'Fête du Travail' },
+		{ date: `${year}-05-08`, reason: 'Victoire 1945' },
+		{ date: fmtDate(addDays(easter, 39)), reason: 'Ascension' },
+		{ date: fmtDate(addDays(easter, 50)), reason: 'Lundi de Pentecôte' },
+		{ date: `${year}-07-14`, reason: 'Fête Nationale' },
+		{ date: `${year}-08-15`, reason: 'Assomption' },
+		{ date: `${year}-11-01`, reason: 'Toussaint' },
+		{ date: `${year}-11-11`, reason: 'Armistice 1918' },
+		{ date: `${year}-12-25`, reason: 'Noël' },
+	];
+}
+
+// Seed the current year plus the next two as non-working public holidays.
+// Idempotent: a date already present (manual closure or prior seed) is left as-is.
+export function seedHolidays() {
+	const thisYear = new Date().getFullYear();
+	const rows = [thisYear, thisYear + 1, thisYear + 2].flatMap(frenchHolidays);
+	for (const r of rows) {
+		db.insert(closures)
+			.values({ date: r.date, reason: r.reason, isHoliday: true })
+			.onConflictDoNothing()
+			.run();
 	}
 }

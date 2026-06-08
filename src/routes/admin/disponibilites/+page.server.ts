@@ -1,15 +1,23 @@
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db/index';
-import { availability } from '$lib/server/db/schema';
+import { availability, closures, settings } from '$lib/server/db/schema';
+import { frenchHolidays } from '$lib/server/db/seed';
 import { eq } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async () => {
 	const avail = db.select().from(availability).orderBy(availability.dayOfWeek).all();
-	return { availability: avail };
+	const closed = db.select().from(closures).orderBy(closures.date).all();
+	const [bedsRow] = db.select().from(settings).where(eq(settings.key, 'total_beds')).all();
+	return {
+		availability: avail,
+		closures: closed,
+		totalBeds: bedsRow ? Number(bedsRow.value) : 1,
+	};
 };
 
 export const actions: Actions = {
+	// Update one weekly schedule row (hours + active flag).
 	update: async ({ request }) => {
 		const data = await request.formData();
 		const id = Number(data.get('id'));
@@ -18,6 +26,66 @@ export const actions: Actions = {
 		const active = data.get('active') === 'on';
 		if (!id) return fail(400);
 		db.update(availability).set({ startTime, endTime, active }).where(eq(availability.id, id)).run();
+		return { success: true };
+	},
+
+	// Add a weekly working day. Replaces any existing row for that weekday.
+	addDay: async ({ request }) => {
+		const data = await request.formData();
+		const dayOfWeek = Number(data.get('dayOfWeek'));
+		const startTime = String(data.get('startTime') || '09:00');
+		const endTime = String(data.get('endTime') || '18:00');
+		if (Number.isNaN(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
+			return fail(400, { error: 'Jour invalide.' });
+		}
+		const existing = db.select().from(availability).where(eq(availability.dayOfWeek, dayOfWeek)).all();
+		if (existing.length > 0) {
+			db.update(availability).set({ startTime, endTime, active: true }).where(eq(availability.dayOfWeek, dayOfWeek)).run();
+		} else {
+			db.insert(availability).values({ dayOfWeek, startTime, endTime, active: true }).run();
+		}
+		return { success: true };
+	},
+
+	deleteDay: async ({ request }) => {
+		const data = await request.formData();
+		const id = Number(data.get('id'));
+		if (!id) return fail(400);
+		db.delete(availability).where(eq(availability.id, id)).run();
+		return { success: true };
+	},
+
+	// Calendar toggle: close an open date, or reopen a closed one.
+	toggleClosure: async ({ request }) => {
+		const data = await request.formData();
+		const date = String(data.get('date') || '');
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, { error: 'Date invalide.' });
+
+		const existing = db.select().from(closures).where(eq(closures.date, date)).all();
+		if (existing.length > 0) {
+			// Reopen — drop the closure row (works for both holidays and manual closures).
+			db.delete(closures).where(eq(closures.date, date)).run();
+		} else {
+			// Close — if the date is a French public holiday, restore its holiday
+			// identity (name + amber styling) instead of a generic closure.
+			const year = Number(date.slice(0, 4));
+			const holiday = frenchHolidays(year).find((h) => h.date === date);
+			db.insert(closures).values({
+				date,
+				reason: holiday ? holiday.reason : 'Fermeture',
+				isHoliday: !!holiday,
+			}).run();
+		}
+		return { success: true };
+	},
+
+	setBeds: async ({ request }) => {
+		const data = await request.formData();
+		const beds = Math.max(1, Number(data.get('totalBeds')) || 1);
+		db.insert(settings)
+			.values({ key: 'total_beds', value: String(beds) })
+			.onConflictDoUpdate({ target: settings.key, set: { value: String(beds) } })
+			.run();
 		return { success: true };
 	},
 };

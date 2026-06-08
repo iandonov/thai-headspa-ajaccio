@@ -27,17 +27,21 @@
 		}
 	}
 
-	const grouped = data.services.reduce((acc, s) => {
-		if (!acc[s.category]) acc[s.category] = [];
-		acc[s.category].push(s);
-		return acc;
-	}, {} as Record<string, typeof data.services>);
+	const grouped = $derived(
+		data.services.reduce((acc, s) => {
+			if (!acc[s.category]) acc[s.category] = [];
+			acc[s.category].push(s);
+			return acc;
+		}, {} as Record<string, typeof data.services>)
+	);
 
 	// Order categories to match the `categories` map (formules first), then any extras
-	const orderedGroups = [
-		...Object.keys(categories).filter((c) => grouped[c]),
-		...Object.keys(grouped).filter((c) => !(c in categories)),
-	].map((c) => [c, grouped[c]] as const);
+	const orderedGroups = $derived(
+		[
+			...Object.keys(categories).filter((c) => grouped[c]),
+			...Object.keys(grouped).filter((c) => !(c in categories)),
+		].map((c) => [c, grouped[c]] as const)
+	);
 </script>
 
 <svelte:head>

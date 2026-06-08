@@ -21,6 +21,7 @@ export const services = sqliteTable('services', {
 	price: real('price').notNull(),
 	category: text('category').notNull().default('massage'),
 	options: text('options'), // JSON array of selectable option labels (for formules)
+	beds: integer('beds').notNull().default(1), // how many beds/tables this prestation occupies
 	imageUrl: text('image_url'),
 	active: integer('active', { mode: 'boolean' }).notNull().default(true),
 	sortOrder: integer('sort_order').notNull().default(0),
@@ -47,6 +48,22 @@ export const bookings = sqliteTable('bookings', {
 	status: text('status', { enum: ['pending', 'confirmed', 'cancelled', 'completed'] }).notNull().default('pending'),
 	notes: text('notes'),
 	createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+});
+
+// Date-specific non-working days (French public holidays seeded by default,
+// plus any manual closures the admin adds via the calendar). A date present here
+// is closed regardless of the weekly `availability` schedule.
+export const closures = sqliteTable('closures', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	date: text('date').notNull().unique(), // "YYYY-MM-DD"
+	reason: text('reason'),
+	isHoliday: integer('is_holiday', { mode: 'boolean' }).notNull().default(false),
+});
+
+// Simple key/value store for spa-wide settings (e.g. total_beds capacity).
+export const settings = sqliteTable('settings', {
+	key: text('key').primaryKey(),
+	value: text('value').notNull(),
 });
 
 export const cmsContent = sqliteTable('cms_content', {

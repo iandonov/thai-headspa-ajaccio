@@ -2,20 +2,22 @@
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
 
-	const featured = data.services.filter((s) => s.category !== 'formule').slice(0, 3);
+	const featured = $derived(data.services.filter((s) => s.category !== 'formule').slice(0, 3));
 
 	type Formule = (typeof data.services)[number] & { optionList: string[] };
-	const formules: Formule[] = data.services
-		.filter((s) => s.category === 'formule')
-		.map((s) => {
-			let optionList: string[] = [];
-			try {
-				optionList = s.options ? JSON.parse(s.options) : [];
-			} catch {
-				optionList = [];
-			}
-			return { ...s, optionList };
-		});
+	const formules: Formule[] = $derived(
+		data.services
+			.filter((s) => s.category === 'formule')
+			.map((s) => {
+				let optionList: string[] = [];
+				try {
+					optionList = s.options ? JSON.parse(s.options) : [];
+				} catch {
+					optionList = [];
+				}
+				return { ...s, optionList };
+			})
+	);
 
 
 	const testimonials = [

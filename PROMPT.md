@@ -91,3 +91,36 @@ Stored as `services` rows with `category = 'formule'` and a new `options` (JSON)
 
 - **Hero background video.** Initially matched lotusheadspala.com's Elementor YouTube clip (`7BGNAGahig8`), then replaced with a user-supplied file (`static/videos/hero.mp4`) served as a self-hosted looping `<video>` (autoplay + muted + loop + playsinline; restarts from the beginning when it ends), with `hero-poster.jpg` as the load fallback.
 - **Background images + translucent panels on every public route.** `/services`, `/about`, `/contact`, `/reservation`, `/reservation/confirmation`, `/connexion`, `/inscription`, `/compte` now use a fixed spa background image with a forest overlay, white headings, and `.glass-panel`/`.glass-card`/`.glass-dark` translucent content (matching the home page). `/admin/*` is intentionally left as a clean dashboard.
+
+## Iteration 4 (2026-06-08)
+
+Follow-up requests:
+
+- **Fix terminal warnings after server start.** Resolved all Svelte 5 dev warnings —
+  `state_referenced_locally` (top-level consts derived from the `data` prop converted to
+  `$derived(...)`; one-time prop reads into `$state` wrapped in `untrack(...)`) and
+  `a11y_label_has_associated_control` (every `<label>` associated via `for`/`id`, using
+  interpolated ids inside `{#each}` loops). `npm run check` is now 0 errors / 0 warnings.
+- **Separate base options from packages in admin**, with the ability to **add new** items of
+  both kinds (and delete). `/admin/services` now has two sections — *Prestations à la carte*
+  (non-formule) and *Formules* — each with a create form. Deleting a service that has bookings
+  hides it (FK-safe) instead of erroring.
+- **Beds / capacity.** Added `services.beds` (how many beds a prestation occupies) on every
+  edit/create form, and a salon-wide **total beds** setting. Slot availability and the booking
+  action are now capacity-aware (peak concurrent bed usage must leave room for the new booking).
+- **Working days/hours via a calendar control.** `/admin/disponibilites` gained a month calendar
+  to close/reopen specific dates, weekly add/remove of working days, and the bed-capacity setting.
+- **French public holidays closed by default.** New `closures` table seeded with the 11 jours
+  fériés (fixed + Easter-based via the Anonymous Gregorian algorithm) for the current year + 2.
+  Reopening then re-closing a holiday restores its name/amber styling (the toggle re-checks
+  `frenchHolidays(year)`).
+- **Playwright e2e suite.** Installed `@playwright/test` + Chromium; 16 tests in `tests/` cover
+  public pages, the full guest booking flow, the slots API (holiday vs working day), auth
+  (register/login/guard), and the admin pages. Runs its own dev server on port 4173 against an
+  isolated, auto-seeded `e2e/test.db`. Scripts: `test:e2e`, `test:e2e:ui`, `test:e2e:report`.
+
+### New / changed data model
+- `services.beds` INTEGER NOT NULL DEFAULT 1 (migrated onto existing DBs in `init.ts`).
+- `closures` (`date` UNIQUE, `reason`, `is_holiday`) — date-specific non-working days.
+- `settings` (`key` PK, `value`) — holds `total_beds`.
+- Seeded by `seedSettings()` + `seedHolidays()` in `seed.ts`, called from `init.ts`.

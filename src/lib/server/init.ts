@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from './db/schema';
-import { seedDatabase, seedPackages } from './db/seed';
+import { seedDatabase, seedPackages, seedSettings, seedHolidays } from './db/seed';
 
 let initialized = false;
 
@@ -74,6 +74,18 @@ export function initDatabase() {
 			type TEXT NOT NULL DEFAULT 'text',
 			updated_at INTEGER
 		);
+
+		CREATE TABLE IF NOT EXISTS closures (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			date TEXT NOT NULL UNIQUE,
+			reason TEXT,
+			is_holiday INTEGER NOT NULL DEFAULT 0
+		);
+
+		CREATE TABLE IF NOT EXISTS settings (
+			key TEXT PRIMARY KEY,
+			value TEXT NOT NULL
+		);
 	`);
 
 	// Migration: add `options` column to existing service tables (pre-formules DBs)
@@ -81,7 +93,13 @@ export function initDatabase() {
 	if (!cols.some((c) => c.name === 'options')) {
 		sqlite.exec(`ALTER TABLE services ADD COLUMN options TEXT`);
 	}
+	// Migration: add `beds` column to existing service tables (pre-beds DBs)
+	if (!cols.some((c) => c.name === 'beds')) {
+		sqlite.exec(`ALTER TABLE services ADD COLUMN beds INTEGER NOT NULL DEFAULT 1`);
+	}
 
 	seedDatabase();
 	seedPackages();
+	seedSettings();
+	seedHolidays();
 }

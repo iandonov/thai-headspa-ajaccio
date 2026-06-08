@@ -40,7 +40,7 @@
 	{#each Object.entries(contentLabels) as [key, label]}
 		<div class="bg-white rounded-(--radius-card) border border-(--color-sand)/60 p-6">
 			<div class="flex items-center justify-between mb-3">
-				<label class="font-sans text-sm font-medium text-(--color-charcoal)">{label}</label>
+				<label for="field-{key}" class="font-sans text-sm font-medium text-(--color-charcoal)">{label}</label>
 				<span class="font-mono text-xs text-(--color-stone)/50">{key}</span>
 			</div>
 			{#if saved === key}
@@ -55,12 +55,14 @@
 				<input type="hidden" name="key" value={key} />
 				{#if key === 'about_body' || key === 'contact_hours'}
 					<textarea
+						id="field-{key}"
 						name="value"
 						rows="5"
 						class="input-field mb-3 resize-y font-sans text-sm"
 					>{contentMap[key] ?? ''}</textarea>
 				{:else}
 					<input
+						id="field-{key}"
 						type="text"
 						name="value"
 						value={contentMap[key] ?? ''}

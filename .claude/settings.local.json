@@ -39,10 +39,20 @@
       "Bash(grep -oE '\\\\\\\\?\\\\.bg-\\\\\\\\?\\\\[--color-forest\\\\\\\\?\\\\][^}]*background[^;]*;' /tmp/appcss.js)",
       "Bash(grep -oE 'bg-forest[^}]{0,80}' /tmp/appcss.js)",
       "Bash(grep -oE '[^,{}]*\\\\{background-color:var\\\\\\(--color-forest\\\\\\)\\\\}' /tmp/appcss.js)",
-      "Bash(grep -c 'bg-\\\\\\\\\\\\[--color-forest' /tmp/appcss.js)"
+      "Bash(grep -c 'bg-\\\\\\\\\\\\[--color-forest' /tmp/appcss.js)",
+      "PowerShell(Get-CimInstance *)",
+      "Bash(curl -s \"http://localhost:5173/api/slots?date=2026-06-16&serviceId=1\")",
+      "Bash(node _smoke.mjs)",
+      "Bash(curl -s --cookie session=__TRACKED_VAR__ http://localhost:5173/admin/services -o /tmp/svc.html)",
+      "Bash(node -e \"import\\('better-sqlite3'\\).then\\(\\({default:D}\\)=>{const db=new D\\(process.env.DATABASE_PATH??'spa.db'\\);const r=db.prepare\\(\\\\\"DELETE FROM users WHERE email='smoke-admin@test.local'\\\\\"\\).run\\(\\);console.log\\('removed test admin rows:',r.changes\\);}\\)\")",
+      "Bash(node -e \"const D=require\\('better-sqlite3'\\);const db=new D\\('spa.db'\\);console.log\\('removed test admin:',db.prepare\\(\\\\\"DELETE FROM users WHERE email='t-admin@test.local'\\\\\"\\).run\\(\\).changes\\)\")",
+      "Bash(rm -f _t.mjs _dev.log)"
     ],
     "additionalDirectories": [
       "C:\\Users\\iando\\Videos"
     ]
+  },
+  "env": {
+    "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1"
   }
 }

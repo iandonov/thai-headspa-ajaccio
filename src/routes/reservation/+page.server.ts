@@ -1,7 +1,7 @@
 import type { Actions, PageServerLoad } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db/index';
-import { services, bookings, availability, users } from '$lib/server/db/schema';
+import { services, bookings, availability, users, closures, settings } from '$lib/server/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { verifyPassword, hashPassword, createToken } from '$lib/server/auth';
 
@@ -117,24 +117,47 @@ export const actions: Actions = {
 		const endMinutes = sh * 60 + sm + service.duration;
 		const endTime = `${Math.floor(endMinutes/60).toString().padStart(2,'0')}:${(endMinutes%60).toString().padStart(2,'0')}`;
 
+		// Date-specific closure (public holiday or manual) → no bookings allowed.
+		const [closure] = db.select().from(closures).where(eq(closures.date, date)).all();
+		if (closure) return fail(400, { error: 'Nous sommes fermés ce jour-là.' });
+
 		const dayOfWeek = new Date(date).getDay();
 		const [avail] = db.select().from(availability)
 			.where(and(eq(availability.dayOfWeek, dayOfWeek), eq(availability.active, true)))
 			.all();
 		if (!avail) return fail(400, { error: "Nous ne travaillons pas ce jour-là." });
 
-		// Reject if the chosen slot overlaps an existing pending/confirmed booking
-		// (guards against a stale client picking an already-taken hour).
+		// Reject if no bed is free for this prestation during the chosen window.
+		// Capacity = total_beds; each booking consumes its service's `beds`.
+		const serviceBeds = service.beds ?? 1;
+		const [bedsRow] = db.select().from(settings).where(eq(settings.key, 'total_beds')).all();
+		const totalBeds = bedsRow ? Number(bedsRow.value) : 1;
+
 		const startMin = sh * 60 + sm;
-		const sameDay = db.select().from(bookings)
+		const sameDay = db.select({
+			startTime: bookings.startTime,
+			endTime: bookings.endTime,
+			beds: services.beds,
+		})
+			.from(bookings)
+			.leftJoin(services, eq(bookings.serviceId, services.id))
 			.where(and(eq(bookings.date, date), inArray(bookings.status, ['pending', 'confirmed'])))
 			.all();
-		const overlaps = sameDay.some((b) => {
+
+		const intervals = sameDay.map((b) => {
 			const [bsh, bsm] = b.startTime.split(':').map(Number);
 			const [beh, bem] = b.endTime.split(':').map(Number);
-			return startMin < beh * 60 + bem && endMinutes > bsh * 60 + bsm;
+			return { s: bsh * 60 + bsm, e: beh * 60 + bem, beds: b.beds ?? 1 };
 		});
-		if (overlaps) {
+
+		// Peak concurrent bed usage across the requested window.
+		const points = [startMin, ...intervals.filter((iv) => iv.s > startMin && iv.s < endMinutes).map((iv) => iv.s)];
+		let peak = 0;
+		for (const p of points) {
+			const used = intervals.filter((iv) => iv.s <= p && iv.e > p).reduce((sum, iv) => sum + iv.beds, 0);
+			if (used > peak) peak = used;
+		}
+		if (peak + serviceBeds > totalBeds) {
 			return fail(409, { error: 'Ce créneau vient d’être réservé. Veuillez en choisir un autre.' });
 		}
 

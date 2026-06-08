@@ -2,17 +2,20 @@
 	import type { PageData, ActionData } from './$types';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import { untrack } from 'svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	let selectedServiceId = $state(data.preselectedServiceId ?? null);
-	let selectedOption = $state(data.preselectedOption ?? '');
+	// These capture the load-time preselection once; untrack makes the intentional
+	// one-time read of the reactive `data` prop explicit (and silences the warning).
+	let selectedServiceId = $state(untrack(() => data.preselectedServiceId ?? null));
+	let selectedOption = $state(untrack(() => data.preselectedOption ?? ''));
 	let selectedDate = $state('');
 	let selectedSlot = $state('');
 	let loadingSlots = $state(false);
 	let slots = $state<{ time: string; available: boolean }[]>([]);
 	// Start at the date step when a service was preselected (e.g. via a formule link).
-	let step = $state(data.preselectedServiceId ? 2 : 1); // 1: service, 2: date/slot, 3: details
+	let step = $state(untrack(() => (data.preselectedServiceId ? 2 : 1))); // 1: service, 2: date/slot, 3: details
 
 	// Step 3 identity: how the visitor wants to provide their details.
 	let authMode = $state<'guest' | 'login' | 'register'>('guest');
@@ -476,12 +479,12 @@
 							<!-- Inline sign-in: authenticates without leaving the page -->
 							<form method="POST" action="?/login" use:enhance={handleAuth} class="space-y-4 mb-6">
 								<div>
-									<label class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Email *</label>
-									<input name="email" type="email" required autocomplete="email" class="input-field" placeholder="votre@email.fr" />
+									<label for="login-email" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Email *</label>
+									<input id="login-email" name="email" type="email" required autocomplete="email" class="input-field" placeholder="votre@email.fr" />
 								</div>
 								<div>
-									<label class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Mot de passe *</label>
-									<input name="password" type="password" required autocomplete="current-password" class="input-field" placeholder="••••••••" />
+									<label for="login-password" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Mot de passe *</label>
+									<input id="login-password" name="password" type="password" required autocomplete="current-password" class="input-field" placeholder="••••••••" />
 								</div>
 								<button type="submit" disabled={authLoading} class="btn-primary w-full justify-center disabled:opacity-50">
 									{authLoading ? 'Connexion…' : 'Se connecter et continuer'}
@@ -492,27 +495,27 @@
 							<form method="POST" action="?/register" use:enhance={handleAuth} class="space-y-4 mb-6">
 								<div class="grid grid-cols-2 gap-4">
 									<div>
-										<label class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Prénom *</label>
-										<input name="firstName" type="text" required class="input-field" placeholder="Marie" />
+										<label for="reg-firstName" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Prénom *</label>
+										<input id="reg-firstName" name="firstName" type="text" required class="input-field" placeholder="Marie" />
 									</div>
 									<div>
-										<label class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Nom *</label>
-										<input name="lastName" type="text" required class="input-field" placeholder="Dupont" />
+										<label for="reg-lastName" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Nom *</label>
+										<input id="reg-lastName" name="lastName" type="text" required class="input-field" placeholder="Dupont" />
 									</div>
 								</div>
 								<div class="grid grid-cols-2 gap-4">
 									<div>
-										<label class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Email *</label>
-										<input name="email" type="email" required autocomplete="email" class="input-field" placeholder="votre@email.fr" />
+										<label for="reg-email" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Email *</label>
+										<input id="reg-email" name="email" type="email" required autocomplete="email" class="input-field" placeholder="votre@email.fr" />
 									</div>
 									<div>
-										<label class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Téléphone</label>
-										<input name="phone" type="tel" class="input-field" placeholder="06 00 00 00 00" />
+										<label for="reg-phone" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Téléphone</label>
+										<input id="reg-phone" name="phone" type="tel" class="input-field" placeholder="06 00 00 00 00" />
 									</div>
 								</div>
 								<div>
-									<label class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Mot de passe * <span class="normal-case text-(--color-stone)/60">(8 caractères min.)</span></label>
-									<input name="password" type="password" required autocomplete="new-password" class="input-field" placeholder="••••••••" />
+									<label for="reg-password" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Mot de passe * <span class="normal-case text-(--color-stone)/60">(8 caractères min.)</span></label>
+									<input id="reg-password" name="password" type="password" required autocomplete="new-password" class="input-field" placeholder="••••••••" />
 								</div>
 								<button type="submit" disabled={authLoading} class="btn-primary w-full justify-center disabled:opacity-50">
 									{authLoading ? 'Création…' : 'Créer mon compte et continuer'}
@@ -527,25 +530,25 @@
 							<div class="space-y-4 mb-6">
 								<div class="grid grid-cols-2 gap-4">
 									<div>
-										<label class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Nom complet *</label>
-										<input name="guestName" type="text" required class="input-field" placeholder="Marie Dupont" />
+										<label for="guest-name" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Nom complet *</label>
+										<input id="guest-name" name="guestName" type="text" required class="input-field" placeholder="Marie Dupont" />
 									</div>
 									<div>
-										<label class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Téléphone</label>
-										<input name="guestPhone" type="tel" class="input-field" placeholder="06 00 00 00 00" />
+										<label for="guest-phone" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Téléphone</label>
+										<input id="guest-phone" name="guestPhone" type="tel" class="input-field" placeholder="06 00 00 00 00" />
 									</div>
 								</div>
 								<div>
-									<label class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Email *</label>
-									<input name="guestEmail" type="email" required class="input-field" placeholder="votre@email.fr" />
+									<label for="guest-email" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Email *</label>
+									<input id="guest-email" name="guestEmail" type="email" required class="input-field" placeholder="votre@email.fr" />
 								</div>
 							</div>
 						{/if}
 
 						{#if data.user || authMode === 'guest'}
 							<div>
-								<label class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Notes (optionnel)</label>
-								<textarea name="notes" rows="3" class="input-field resize-none" placeholder="Allergies, préférences particulières..."></textarea>
+								<label for="notes" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Notes (optionnel)</label>
+								<textarea id="notes" name="notes" rows="3" class="input-field resize-none" placeholder="Allergies, préférences particulières..."></textarea>
 							</div>
 
 							<input type="hidden" name="serviceId" value={selectedServiceId} />
