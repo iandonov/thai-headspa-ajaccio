@@ -18,10 +18,17 @@
   Both deploy with `--track-status false` so the CLI can't report a false
   "failed to start" (its startup probe times out even on success — Azure retries
   the container; we verify the live site ourselves).
+
+  Auth: if there's no active Azure session, Preflight runs `az login`
+  automatically (browser flow). On a machine without a browser, pass -DeviceCode
+  to use the device-code flow instead. If the tenant enforces MFA (AADSTS50076),
+  pass -Tenant <id> so login targets that tenant directly.
 #>
 [CmdletBinding()]
 param(
   [switch]$Fast,
+  [switch]$DeviceCode,   # use 'az login --use-device-code' (headless / no local browser)
+  [string]$Tenant        = '902f14f8-6c86-4d31-9e56-c3715eeca530',   # tenant that owns $Subscription (enforces MFA)
   [string]$App           = 'thai-headspa-ajaccio',
   [string]$ResourceGroup = 'rg-thai-headspa',
   [string]$Subscription  = 'efab821f-1294-49d7-936a-a08350e886f4',
@@ -144,6 +151,17 @@ function Build-PrebuiltStage {
   Write-Host 'Verified Linux ELF better-sqlite3 binary.'
 }
 
+function Invoke-AzLogin {
+  $loginArgs = @('login', '--only-show-errors')
+  if ($Tenant)     { $loginArgs += @('--tenant', $Tenant) }
+  if ($DeviceCode) { $loginArgs += '--use-device-code' }
+  Write-Host ("Launching az login{0}..." -f $(if ($Tenant) { " (tenant $Tenant)" } else { '' })) -ForegroundColor Yellow
+  az @loginArgs | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    throw "az login failed. If the tenant enforces MFA, re-run with -Tenant <id>; on a machine without a browser add -DeviceCode."
+  }
+}
+
 # --- main --------------------------------------------------------------------
 
 try {
@@ -151,11 +169,25 @@ try {
   if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
     throw "Azure CLI 'az' not found on PATH. Install it and run 'az login'."
   }
-  $current = (az account show --query id -o tsv 2>$null)
-  if (-not $current) { throw 'Not logged in. Run: az login' }
-  if ($current -ne $Subscription) {
-    az account set --subscription $Subscription | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "Could not select subscription $Subscription (az login with the right account?)." }
+
+  # Ensure an authenticated session exists.
+  if (-not (az account show --query id -o tsv 2>$null)) {
+    Write-Host 'No active Azure session.' -ForegroundColor Yellow
+    Invoke-AzLogin
+    if (-not (az account show --query id -o tsv 2>$null)) { throw 'Still not authenticated after az login.' }
+  }
+
+  # Select the target subscription. If it isn't in the current session — typically
+  # because it lives in an MFA-protected tenant the bare login couldn't enumerate —
+  # (re)authenticate (honoring -Tenant) and retry once.
+  az account set --subscription $Subscription 2>$null | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "Subscription $Subscription not in current session — re-authenticating..." -ForegroundColor Yellow
+    Invoke-AzLogin
+    az account set --subscription $Subscription 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+      throw "Subscription $Subscription is not available to this account.`n  - If it lives in an MFA-protected tenant, re-run with: -Tenant <tenant-id>`n  - See what you can access:  az account list -o table"
+    }
   }
   Write-Host "Account: $(az account show --query 'user.name' -o tsv)  /  $App ($ResourceGroup)  [mode: $(if ($Fast) {'fast'} else {'reliable'})]"
 
