@@ -56,9 +56,6 @@
 					>
 						<td class="px-4 py-3 font-sans text-sm font-medium text-(--color-charcoal)">
 							{c.firstName} {c.lastName}
-							{#if c.role === 'admin'}
-								<span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] bg-(--color-forest)/10 text-(--color-forest) align-middle">Admin</span>
-							{/if}
 						</td>
 						<td class="px-4 py-3 font-sans text-xs text-(--color-stone)">
 							<div>{c.email}</div>

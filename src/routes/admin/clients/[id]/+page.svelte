@@ -42,9 +42,6 @@
 	<div class="flex-1">
 		<div class="flex items-center gap-2">
 			<h1 class="font-serif text-2xl text-(--color-charcoal)">{data.client.firstName} {data.client.lastName}</h1>
-			{#if data.client.role === 'admin'}
-				<span class="px-2 py-0.5 rounded-full text-[10px] bg-(--color-forest)/10 text-(--color-forest)">Admin</span>
-			{/if}
 		</div>
 		<div class="flex flex-wrap gap-x-5 gap-y-1 mt-1.5 font-sans text-sm text-(--color-stone)">
 			<a href="mailto:{data.client.email}" class="hover:text-(--color-forest)">{data.client.email}</a>

@@ -1,45 +1,34 @@
-import { test, expect, type Page } from '@playwright/test';
-import { ymd } from './helpers';
-
-// Walk the calendar's selectable days until one returns bookable time slots
-// (a day can be a working day yet still closed, e.g. a public holiday).
-async function pickFirstDayWithSlots(page: Page) {
-	const days = page.getByRole('button', { name: /^\d{1,2}$/, disabled: false });
-	const slot = page.getByRole('button', { name: /^\d{1,2}:\d{2}$/, disabled: false }).first();
-
-	const count = await days.count();
-	for (let i = 0; i < count; i++) {
-		await days.nth(i).click();
-		try {
-			await slot.waitFor({ state: 'visible', timeout: 4000 });
-			return slot;
-		} catch {
-			// no slots this day — try the next selectable date
-		}
-	}
-	throw new Error('No bookable slot found in the visible calendar months');
-}
+import { test, expect } from '@playwright/test';
+import {
+	ymd,
+	nextWeekday,
+	serviceIdBySlug,
+	setBeds,
+	clearBookings,
+	seedBooking,
+	addClosure,
+	removeClosure,
+	resetAvailabilityToSeed,
+	countBookings,
+	selectServiceAndContinue,
+	pickFirstDayWithSlots,
+} from './helpers';
 
 test('guest can complete a booking end-to-end', async ({ page }) => {
+	// Ensure the standard schedule and free capacity for a clean happy path.
+	resetAvailabilityToSeed();
+	setBeds(3);
+	clearBookings();
+
 	await page.goto('/reservation');
 
-	// Step 1 — choose a service. Retry the (client-side) selection until the
-	// "next" button enables, in case the first click lands before hydration.
-	const serviceBtn = page.locator('button', { hasText: 'Réflexologie Pieds & Mains' }).first();
-	const nextBtn = page.getByRole('button', { name: /Choisir un créneau/ });
-	await expect(async () => {
-		await serviceBtn.click();
-		await expect(nextBtn).toBeEnabled({ timeout: 1000 });
-	}).toPass({ timeout: 15_000 });
-	await nextBtn.click();
+	await selectServiceAndContinue(page, 'Réflexologie Pieds & Mains');
 
-	// Step 2 — pick a date that has slots, then a slot.
 	await expect(page.getByRole('heading', { name: 'Choisissez une date' })).toBeVisible();
 	const slot = await pickFirstDayWithSlots(page);
 	await slot.click();
 	await page.getByRole('button', { name: /Continuer/ }).click();
 
-	// Step 3 — guest details + confirm.
 	await expect(page.getByRole('heading', { name: 'Vos coordonnées' })).toBeVisible();
 	await page.locator('#guest-name').fill('Marie Testeur');
 	await page.locator('#guest-email').fill('marie.testeur@example.com');
@@ -49,23 +38,170 @@ test('guest can complete a booking end-to-end', async ({ page }) => {
 	await expect(page.getByRole('heading', { name: /Demande Envoyée/ })).toBeVisible();
 });
 
-test('slots API respects holidays and working days', async ({ request }) => {
-	const nextYear = new Date().getFullYear() + 1;
+test.describe('slots API — working days, holidays, non-working days', () => {
+	test('a seeded public holiday is closed with no slots', async ({ request }) => {
+		const nextYear = new Date().getFullYear() + 1;
+		const xmas = `${nextYear}-12-25`;
+		const res = await request.get(`/api/slots?date=${xmas}&serviceId=1`);
+		expect(res.ok()).toBeTruthy();
+		const body = await res.json();
+		expect(body.closed).toBe(true);
+		expect(body.slots).toEqual([]);
+	});
 
-	// Christmas is a seeded French public holiday → closed, no slots.
-	const xmas = `${nextYear}-12-25`;
-	const holidayRes = await request.get(`/api/slots?date=${xmas}&serviceId=1`);
-	expect(holidayRes.ok()).toBeTruthy();
-	const holiday = await holidayRes.json();
-	expect(holiday.closed).toBe(true);
-	expect(holiday.slots).toEqual([]);
+	test('a working day (Tuesday) returns bookable slots', async ({ request }) => {
+		resetAvailabilityToSeed();
+		setBeds(3);
+		clearBookings();
+		const tue = ymd(nextWeekday(2));
+		removeClosure(tue); // guarantee it is open even if it lands on a holiday
+		const res = await request.get(`/api/slots?date=${tue}&serviceId=1`);
+		const body = await res.json();
+		expect(body.closed).toBeFalsy();
+		expect(Array.isArray(body.slots)).toBe(true);
+		expect(body.slots.length).toBeGreaterThan(0);
+		expect(body.slots.every((s: { available: boolean }) => s.available)).toBe(true);
+	});
 
-	// The next Tuesday is a weekly working day → returns bookable slots.
-	const d = new Date();
-	d.setDate(d.getDate() + (((2 - d.getDay() + 7) % 7) || 7));
-	const tuesdayRes = await request.get(`/api/slots?date=${ymd(d)}&serviceId=1`);
-	const tuesday = await tuesdayRes.json();
-	expect(tuesday.closed).toBeFalsy();
-	expect(Array.isArray(tuesday.slots)).toBe(true);
-	expect(tuesday.slots.length).toBeGreaterThan(0);
+	test('a non-working day (Sunday) returns no slots and is not "closed"', async ({ request }) => {
+		const sun = ymd(nextWeekday(0));
+		removeClosure(sun);
+		const res = await request.get(`/api/slots?date=${sun}&serviceId=1`);
+		const body = await res.json();
+		expect(body.closed).toBeFalsy(); // no closure row — just outside the weekly schedule
+		expect(body.slots).toEqual([]);
+	});
+});
+
+test.describe('slots API — bed capacity', () => {
+	test('an existing booking removes only the overlapping slots when beds=1', async ({ request }) => {
+		resetAvailabilityToSeed();
+		setBeds(1);
+		clearBookings();
+
+		const reflexId = serviceIdBySlug('reflexologie'); // 30-min, 1 bed
+		const tue = ymd(nextWeekday(2));
+		removeClosure(tue);
+		// Occupy 10:00–10:30.
+		seedBooking({ serviceId: reflexId, date: tue, startTime: '10:00', endTime: '10:30', status: 'confirmed' });
+
+		const res = await request.get(`/api/slots?date=${tue}&serviceId=${reflexId}`);
+		const slots: { time: string; available: boolean }[] = (await res.json()).slots;
+		const byTime = Object.fromEntries(slots.map((s) => [s.time, s.available]));
+
+		expect(byTime['09:30']).toBe(true); // 09:30–10:00 ends at booking start → free
+		expect(byTime['10:00']).toBe(false); // overlaps the booking
+		expect(byTime['10:30']).toBe(true); // starts when the booking ends → free
+	});
+
+	test('adding capacity frees a previously blocked slot', async ({ request }) => {
+		resetAvailabilityToSeed();
+		clearBookings();
+
+		const reflexId = serviceIdBySlug('reflexologie');
+		const tue = ymd(nextWeekday(2));
+		removeClosure(tue);
+		seedBooking({ serviceId: reflexId, date: tue, startTime: '10:00', endTime: '10:30', status: 'confirmed' });
+
+		setBeds(1);
+		let slots = (await (await request.get(`/api/slots?date=${tue}&serviceId=${reflexId}`)).json()).slots;
+		expect(slots.find((s: { time: string }) => s.time === '10:00').available).toBe(false);
+
+		setBeds(2);
+		slots = (await (await request.get(`/api/slots?date=${tue}&serviceId=${reflexId}`)).json()).slots;
+		expect(slots.find((s: { time: string }) => s.time === '10:00').available).toBe(true);
+	});
+
+	test('cancelled bookings do not consume a bed', async ({ request }) => {
+		resetAvailabilityToSeed();
+		setBeds(1);
+		clearBookings();
+
+		const reflexId = serviceIdBySlug('reflexologie');
+		const tue = ymd(nextWeekday(2));
+		removeClosure(tue);
+		seedBooking({ serviceId: reflexId, date: tue, startTime: '10:00', endTime: '10:30', status: 'cancelled' });
+
+		const slots = (await (await request.get(`/api/slots?date=${tue}&serviceId=${reflexId}`)).json()).slots;
+		expect(slots.find((s: { time: string }) => s.time === '10:00').available).toBe(true);
+	});
+});
+
+test.describe('booking action — server-side guards', () => {
+	// SvelteKit re-renders the page on `fail(...)` (no new booking row) and
+	// 30x-redirects to the confirmation page on success, so we assert the real
+	// outcome via the bookings table. The first test is a positive control that
+	// also proves the POST path (and CSRF origin) works.
+	const ORIGIN_HEADER = { origin: 'http://localhost:4173' };
+
+	test('a valid POST creates a booking (positive control)', async ({ request }) => {
+		resetAvailabilityToSeed();
+		setBeds(3);
+		clearBookings();
+
+		const reflexId = serviceIdBySlug('reflexologie');
+		const tue = ymd(nextWeekday(2));
+		removeClosure(tue);
+
+		await request.post('/reservation?/book', {
+			headers: ORIGIN_HEADER,
+			maxRedirects: 0,
+			form: {
+				serviceId: String(reflexId),
+				date: tue,
+				startTime: '09:00',
+				guestName: 'Positive Control',
+				guestEmail: 'pos@test.local',
+			},
+		});
+		// The booking row is the source of truth (a successful action redirects,
+		// a rejected one re-renders — either way the table tells us what happened).
+		expect(countBookings({ date: tue })).toBe(1);
+	});
+
+	test('rejects a booking on a closed (holiday) date', async ({ request }) => {
+		clearBookings();
+		const reflexId = serviceIdBySlug('reflexologie');
+		const closed = ymd(nextWeekday(2));
+		addClosure(closed, 'Fermeture test', false);
+
+		await request.post('/reservation?/book', {
+			headers: ORIGIN_HEADER,
+			maxRedirects: 0,
+			form: {
+				serviceId: String(reflexId),
+				date: closed,
+				startTime: '10:00',
+				guestName: 'Guard Test',
+				guestEmail: 'guard@test.local',
+			},
+		});
+		expect(countBookings({ date: closed })).toBe(0); // closure → no booking created
+		removeClosure(closed);
+	});
+
+	test('rejects a booking when no bed is free', async ({ request }) => {
+		resetAvailabilityToSeed();
+		setBeds(1);
+		clearBookings();
+
+		const reflexId = serviceIdBySlug('reflexologie');
+		const tue = ymd(nextWeekday(2));
+		removeClosure(tue);
+		seedBooking({ serviceId: reflexId, date: tue, startTime: '10:00', endTime: '10:30', status: 'confirmed' });
+
+		await request.post('/reservation?/book', {
+			headers: ORIGIN_HEADER,
+			maxRedirects: 0,
+			form: {
+				serviceId: String(reflexId),
+				date: tue,
+				startTime: '10:00',
+				guestName: 'Guard Test',
+				guestEmail: 'guard@test.local',
+			},
+		});
+		// Only the seeded booking remains — the conflicting attempt was rejected.
+		expect(countBookings({ date: tue })).toBe(1);
+	});
 });

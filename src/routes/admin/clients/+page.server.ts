@@ -22,6 +22,7 @@ export const load: PageServerLoad = async () => {
 		.from(users)
 		.leftJoin(bookings, eq(bookings.userId, users.id))
 		.leftJoin(services, eq(bookings.serviceId, services.id))
+		.where(eq(users.role, 'client')) // admins are staff, not customers — keep them out of the client roster
 		.groupBy(users.id)
 		.orderBy(desc(users.createdAt))
 		.all();

@@ -6,7 +6,7 @@ import { eq, sql } from 'drizzle-orm';
 export const load: PageServerLoad = async () => {
 	const totalBookings = db.select({ count: sql<number>`count(*)` }).from(bookings).all()[0].count;
 	const pendingBookings = db.select({ count: sql<number>`count(*)` }).from(bookings).where(eq(bookings.status, 'pending')).all()[0].count;
-	const totalUsers = db.select({ count: sql<number>`count(*)` }).from(users).all()[0].count;
+	const totalUsers = db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.role, 'client')).all()[0].count;
 	const totalServices = db.select({ count: sql<number>`count(*)` }).from(services).where(eq(services.active, true)).all()[0].count;
 
 	const recentBookings = db

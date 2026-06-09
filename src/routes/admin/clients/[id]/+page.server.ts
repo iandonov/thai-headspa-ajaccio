@@ -9,7 +9,8 @@ export const load: PageServerLoad = async ({ params }) => {
 	if (!id) error(404, 'Client introuvable');
 
 	const [client] = db.select().from(users).where(eq(users.id, id)).all();
-	if (!client) error(404, 'Client introuvable');
+	// Admin accounts are staff, not customers — no client dossier.
+	if (!client || client.role === 'admin') error(404, 'Client introuvable');
 
 	const history = db
 		.select({

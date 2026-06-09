@@ -54,8 +54,8 @@
 					{item.label}
 				</a>
 
-				<!-- Submenu: revealed while the parent section is active -->
-				{#if item.children && isActive(item.href)}
+				<!-- Submenu: always visible when the section has children -->
+				{#if item.children}
 					<div class="ml-7 mb-1 space-y-0.5 border-l border-white/10 pl-3">
 						{#each item.children as sub}
 							<a

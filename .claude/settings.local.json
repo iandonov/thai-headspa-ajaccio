@@ -56,7 +56,9 @@
       "PowerShell($edge = \"${env:ProgramFiles\\(x86\\)}\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\"; if \\(-not \\(Test-Path $edge\\)\\) { $edge = \"$env:ProgramFiles\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\" }; \"Edge: $edge\"; $prof = \"$env:TEMP\\\\edge-cdp-spa\"; Start-Process $edge -ArgumentList \"--remote-debugging-port=9222\",\"--user-data-dir=`\"$prof`\"\",\"--no-first-run\",\"--no-default-browser-check\",\"http://localhost:5173/connexion\"; Start-Sleep -Seconds 3; \\(Invoke-WebRequest \"http://127.0.0.1:9222/json/version\" -UseBasicParsing\\).Content)",
       "PowerShell(npm run *)",
       "PowerShell(node tmp-shots.mjs)",
-      "PowerShell(node tmp-shots2.mjs)"
+      "PowerShell(node tmp-shots2.mjs)",
+      "Bash(npx playwright *)",
+      "Bash(git check-ignore *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\iando\\Videos"

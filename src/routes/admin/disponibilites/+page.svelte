@@ -39,15 +39,15 @@
 
 	type Cell = { day: number; dateStr: string; weekday: number; closed: boolean; holiday: boolean; reason: string | null; weeklyOff: boolean; past: boolean };
 
-	const cells = $derived.by(() => {
-		const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-		const firstJsDay = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
+	function buildCells(year: number, month: number): (Cell | null)[] {
+		const daysInMonth = new Date(year, month + 1, 0).getDate();
+		const firstJsDay = new Date(year, month, 1).getDay(); // 0=Sun
 		const leading = (firstJsDay + 6) % 7; // Monday-based offset
 		const out: (Cell | null)[] = [];
 		for (let i = 0; i < leading; i++) out.push(null);
 		for (let d = 1; d <= daysInMonth; d++) {
-			const dateStr = `${viewYear}-${pad(viewMonth + 1)}-${pad(d)}`;
-			const weekday = new Date(viewYear, viewMonth, d).getDay();
+			const dateStr = `${year}-${pad(month + 1)}-${pad(d)}`;
+			const weekday = new Date(year, month, d).getDay();
 			const c = closedMap.get(dateStr);
 			out.push({
 				day: d,
@@ -61,7 +61,16 @@
 			});
 		}
 		return out;
-	});
+	}
+
+	// Two consecutive months: the one in view, and the next. The second is
+	// hidden by CSS when the viewport is too narrow to fit it.
+	const months = $derived([
+		{ year: viewYear, month: viewMonth },
+		viewMonth === 11
+			? { year: viewYear + 1, month: 0 }
+			: { year: viewYear, month: viewMonth + 1 },
+	]);
 </script>
 
 <svelte:head><title>Disponibilités — Admin</title></svelte:head>
@@ -162,47 +171,59 @@
 		<div class="flex items-center gap-3">
 			<button type="button" onclick={prevMonth} aria-label="Mois précédent"
 				class="w-8 h-8 grid place-items-center rounded-sm border border-(--color-sand) hover:bg-(--color-sand)/30">‹</button>
-			<span class="font-sans text-sm text-(--color-charcoal) w-40 text-center">{monthNames[viewMonth]} {viewYear}</span>
 			<button type="button" onclick={nextMonth} aria-label="Mois suivant"
 				class="w-8 h-8 grid place-items-center rounded-sm border border-(--color-sand) hover:bg-(--color-sand)/30">›</button>
 		</div>
 	</div>
 	<p class="font-sans text-xs text-(--color-stone) mb-4">Cliquez sur un jour pour le fermer ou le rouvrir. Les jours fériés français sont fermés par défaut.</p>
 
-	<div class="grid grid-cols-7 gap-1 mb-1 max-w-md">
-		{#each weekHeaders as h}
-			<div class="text-center font-sans text-xs uppercase tracking-wider text-(--color-stone) py-1">{h}</div>
-		{/each}
-	</div>
-	<div class="grid grid-cols-7 gap-1 max-w-md">
-		{#each cells as cell}
-			{#if cell === null}
-				<div></div>
-			{:else}
-				<form method="POST" action="?/toggleClosure" use:enhance>
-					<input type="hidden" name="date" value={cell.dateStr} />
-					<button type="submit"
-						title={cell.closed ? (cell.reason ?? 'Fermé') : cell.weeklyOff ? 'Jour de repos' : (hoursByDay.get(cell.weekday) ? `${hoursByDay.get(cell.weekday)?.start}–${hoursByDay.get(cell.weekday)?.end}` : 'Ouvert')}
-						class="w-full aspect-square rounded-sm border text-left p-1.5 flex flex-col justify-between transition-colors
-							{cell.closed
-								? (cell.holiday ? 'bg-amber-50 border-amber-300 hover:bg-amber-100' : 'bg-red-50 border-red-300 hover:bg-red-100')
-								: cell.weeklyOff
-									? 'bg-(--color-sand)/30 border-(--color-sand) hover:bg-(--color-sand)/50'
-									: 'bg-white border-(--color-sand)/60 hover:border-(--color-forest)'}
-							{cell.past ? 'opacity-50' : ''}
-							{cell.dateStr === todayStr ? 'ring-2 ring-(--color-forest)' : ''}">
-						<span class="font-sans text-xs text-(--color-charcoal)">{cell.day}</span>
-						{#if cell.closed}
-							<span class="font-sans text-[10px] leading-tight {cell.holiday ? 'text-amber-700' : 'text-red-600'} truncate">{cell.holiday ? cell.reason : 'Fermé'}</span>
-						{:else if cell.weeklyOff}
-							<span class="font-sans text-[10px] leading-tight text-(--color-stone)">Repos</span>
-						{:else}
-							<span class="font-sans text-[10px] leading-tight text-(--color-forest)">Ouvert</span>
-						{/if}
-					</button>
-				</form>
-			{/if}
-		{/each}
+	{#snippet monthGrid(year: number, month: number)}
+		<div class="flex-1 min-w-0 max-w-md">
+			<p class="font-sans text-sm text-(--color-charcoal) text-center mb-2">{monthNames[month]} {year}</p>
+			<div class="grid grid-cols-7 gap-1 mb-1">
+				{#each weekHeaders as h}
+					<div class="text-center font-sans text-xs uppercase tracking-wider text-(--color-stone) py-1">{h}</div>
+				{/each}
+			</div>
+			<div class="grid grid-cols-7 gap-1">
+				{#each buildCells(year, month) as cell}
+					{#if cell === null}
+						<div></div>
+					{:else}
+						<form method="POST" action="?/toggleClosure" use:enhance>
+							<input type="hidden" name="date" value={cell.dateStr} />
+							<button type="submit"
+								title={cell.closed ? (cell.reason ?? 'Fermé') : cell.weeklyOff ? 'Jour de repos' : (hoursByDay.get(cell.weekday) ? `${hoursByDay.get(cell.weekday)?.start}–${hoursByDay.get(cell.weekday)?.end}` : 'Ouvert')}
+								class="w-full aspect-square rounded-sm border text-left p-1.5 flex flex-col justify-between transition-colors
+									{cell.closed
+										? (cell.holiday ? 'bg-amber-50 border-amber-300 hover:bg-amber-100' : 'bg-red-50 border-red-300 hover:bg-red-100')
+										: cell.weeklyOff
+											? 'bg-(--color-sand)/30 border-(--color-sand) hover:bg-(--color-sand)/50'
+											: 'bg-white border-(--color-sand)/60 hover:border-(--color-forest)'}
+									{cell.past ? 'opacity-50' : ''}
+									{cell.dateStr === todayStr ? 'ring-2 ring-(--color-forest)' : ''}">
+								<span class="font-sans text-xs text-(--color-charcoal)">{cell.day}</span>
+								{#if cell.closed}
+									<span class="font-sans text-[10px] leading-tight {cell.holiday ? 'text-amber-700' : 'text-red-600'} truncate">{cell.holiday ? cell.reason : 'Fermé'}</span>
+								{:else if cell.weeklyOff}
+									<span class="font-sans text-[10px] leading-tight text-(--color-stone)">Repos</span>
+								{:else}
+									<span class="font-sans text-[10px] leading-tight text-(--color-forest)">Ouvert</span>
+								{/if}
+							</button>
+						</form>
+					{/if}
+				{/each}
+			</div>
+		</div>
+	{/snippet}
+
+	<div class="flex flex-col xl:flex-row gap-8">
+		{@render monthGrid(months[0].year, months[0].month)}
+		<!-- Second month only appears when there is room (≥ xl) -->
+		<div class="hidden xl:block flex-1 min-w-0">
+			{@render monthGrid(months[1].year, months[1].month)}
+		</div>
 	</div>
 
 	<div class="flex flex-wrap gap-4 mt-4 font-sans text-xs text-(--color-stone)">

@@ -4,6 +4,7 @@ import { db } from '$lib/server/db/index';
 import { services, bookings, availability, users, closures, settings } from '$lib/server/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { verifyPassword, hashPassword, createToken } from '$lib/server/auth';
+import { hasCapacity, toMin } from '$lib/server/availability';
 
 const SESSION_COOKIE = {
 	path: '/',
@@ -90,6 +91,11 @@ export const actions: Actions = {
 	},
 
 	book: async ({ request, locals }) => {
+		// Admin accounts are staff, not customers — they cannot place bookings.
+		if (locals.user?.role === 'admin') {
+			return fail(403, { error: "Connecté en tant qu'administrateur : les réservations ne sont pas disponibles." });
+		}
+
 		const data = await request.formData();
 		const serviceId = Number(data.get('serviceId'));
 		const date = String(data.get('date') || '');
@@ -144,20 +150,14 @@ export const actions: Actions = {
 			.where(and(eq(bookings.date, date), inArray(bookings.status, ['pending', 'confirmed'])))
 			.all();
 
-		const intervals = sameDay.map((b) => {
-			const [bsh, bsm] = b.startTime.split(':').map(Number);
-			const [beh, bem] = b.endTime.split(':').map(Number);
-			return { s: bsh * 60 + bsm, e: beh * 60 + bem, beds: b.beds ?? 1 };
-		});
+		const intervals = sameDay.map((b) => ({
+			s: toMin(b.startTime),
+			e: toMin(b.endTime),
+			beds: b.beds ?? 1,
+		}));
 
-		// Peak concurrent bed usage across the requested window.
-		const points = [startMin, ...intervals.filter((iv) => iv.s > startMin && iv.s < endMinutes).map((iv) => iv.s)];
-		let peak = 0;
-		for (const p of points) {
-			const used = intervals.filter((iv) => iv.s <= p && iv.e > p).reduce((sum, iv) => sum + iv.beds, 0);
-			if (used > peak) peak = used;
-		}
-		if (peak + serviceBeds > totalBeds) {
+		// Reject if no bed is free for this prestation during the chosen window.
+		if (!hasCapacity({ startMin, endMin: endMinutes, serviceBeds, totalBeds, existing: intervals })) {
 			return fail(409, { error: 'Ce créneau vient d’être réservé. Veuillez en choisir un autre.' });
 		}
 

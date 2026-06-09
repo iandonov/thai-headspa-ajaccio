@@ -39,6 +39,9 @@
 
 	const selectedService = $derived(data.services.find(s => s.id === selectedServiceId));
 
+	// Admins are staff, not customers — booking is disabled for them.
+	const isAdmin = $derived(data.user?.role === 'admin');
+
 	function parseOptions(raw: string | null): string[] {
 		if (!raw) return [];
 		try {
@@ -443,7 +446,15 @@
 
 					<h2 class="font-serif text-2xl text-(--color-charcoal) mb-6">Vos coordonnées</h2>
 
-					{#if data.user}
+					{#if data.user && isAdmin}
+						<!-- Admin accounts are staff — they cannot place bookings. -->
+						<div class="flex items-center gap-3 bg-amber-50 rounded-sm border border-amber-200 p-4 mb-6">
+							<svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+							<p class="font-sans text-sm text-(--color-charcoal)">
+								Vous êtes connecté en tant qu'<strong>administrateur</strong>. Les réservations ne sont pas disponibles pour les comptes administrateur — déconnectez-vous pour réserver en tant que client.
+							</p>
+						</div>
+					{:else if data.user}
 						<!-- Authenticated (incl. just signed in inline) -->
 						<div class="flex items-center gap-3 bg-(--color-forest)/5 rounded-sm border border-(--color-forest)/20 p-4 mb-6">
 							<div class="w-9 h-9 rounded-full bg-(--color-forest)/10 flex items-center justify-center text-(--color-forest) shrink-0">
@@ -545,7 +556,7 @@
 							</div>
 						{/if}
 
-						{#if data.user || authMode === 'guest'}
+						{#if (data.user && !isAdmin) || authMode === 'guest'}
 							<div>
 								<label for="notes" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Notes (optionnel)</label>
 								<textarea id="notes" name="notes" rows="3" class="input-field resize-none" placeholder="Allergies, préférences particulières..."></textarea>

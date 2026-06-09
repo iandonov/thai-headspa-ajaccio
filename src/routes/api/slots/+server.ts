@@ -3,11 +3,7 @@ import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db/index';
 import { availability, bookings, services, closures, settings } from '$lib/server/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
-
-const toMin = (hhmm: string) => {
-	const [h, m] = hhmm.split(':').map(Number);
-	return h * 60 + m;
-};
+import { computeSlots, toMin } from '$lib/server/availability';
 
 export const GET: RequestHandler = async ({ url }) => {
 	const dateStr = url.searchParams.get('date');
@@ -51,31 +47,14 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	const intervals = existing.map((b) => ({ s: toMin(b.startTime), e: toMin(b.endTime), beds: b.beds ?? 1 }));
 
-	const slots: { time: string; available: boolean }[] = [];
-	const startMinutes = toMin(avail.startTime);
-	const endMinutes = toMin(avail.endTime);
-
-	for (let t = startMinutes; t + service.duration <= endMinutes; t += 30) {
-		const slotEnd = t + service.duration;
-
-		// Peak concurrent bed usage during the candidate window. Usage only rises at
-		// an interval's start, so sampling at the window start plus every interval
-		// start inside the window captures the maximum.
-		const points = [t, ...intervals.filter((iv) => iv.s > t && iv.s < slotEnd).map((iv) => iv.s)];
-		let peak = 0;
-		for (const p of points) {
-			const used = intervals
-				.filter((iv) => iv.s <= p && iv.e > p)
-				.reduce((sum, iv) => sum + iv.beds, 0);
-			if (used > peak) peak = used;
-		}
-
-		const h = Math.floor(t / 60).toString().padStart(2, '0');
-		const m = (t % 60).toString().padStart(2, '0');
-
-		// Available when the spa still has enough free beds for this prestation.
-		slots.push({ time: `${h}:${m}`, available: peak + serviceBeds <= totalBeds });
-	}
+	const slots = computeSlots({
+		availStartMin: toMin(avail.startTime),
+		availEndMin: toMin(avail.endTime),
+		durationMin: service.duration,
+		serviceBeds,
+		totalBeds,
+		existing: intervals,
+	});
 
 	return json({ slots });
 };
