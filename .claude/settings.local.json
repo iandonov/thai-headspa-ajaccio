@@ -1,4 +1,7 @@
 {
+  "env": {
+    "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1"
+  },
   "permissions": {
     "allow": [
       "WebFetch(domain:lotusheadspala.com)",
@@ -46,13 +49,14 @@
       "Bash(curl -s --cookie session=__TRACKED_VAR__ http://localhost:5173/admin/services -o /tmp/svc.html)",
       "Bash(node -e \"import\\('better-sqlite3'\\).then\\(\\({default:D}\\)=>{const db=new D\\(process.env.DATABASE_PATH??'spa.db'\\);const r=db.prepare\\(\\\\\"DELETE FROM users WHERE email='smoke-admin@test.local'\\\\\"\\).run\\(\\);console.log\\('removed test admin rows:',r.changes\\);}\\)\")",
       "Bash(node -e \"const D=require\\('better-sqlite3'\\);const db=new D\\('spa.db'\\);console.log\\('removed test admin:',db.prepare\\(\\\\\"DELETE FROM users WHERE email='t-admin@test.local'\\\\\"\\).run\\(\\).changes\\)\")",
-      "Bash(rm -f _t.mjs _dev.log)"
+      "Bash(rm -f _t.mjs _dev.log)",
+      "Bash(git -C \"D:\\\\Source\\\\Personal\\\\SPA\" ls-files)",
+      "Bash(node -e ' *)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell($edge = \"${env:ProgramFiles\\(x86\\)}\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\"; if \\(-not \\(Test-Path $edge\\)\\) { $edge = \"$env:ProgramFiles\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\" }; \"Edge: $edge\"; $prof = \"$env:TEMP\\\\edge-cdp-spa\"; Start-Process $edge -ArgumentList \"--remote-debugging-port=9222\",\"--user-data-dir=`\"$prof`\"\",\"--no-first-run\",\"--no-default-browser-check\",\"http://localhost:5173/connexion\"; Start-Sleep -Seconds 3; \\(Invoke-WebRequest \"http://127.0.0.1:9222/json/version\" -UseBasicParsing\\).Content)"
     ],
     "additionalDirectories": [
       "C:\\Users\\iando\\Videos"
     ]
-  },
-  "env": {
-    "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1"
   }
 }

@@ -16,7 +16,7 @@
 	}
 </script>
 
-<div class="min-h-screen flex bg-(--color-cream)">
+<div class="h-screen flex bg-(--color-cream) overflow-hidden">
 	<!-- Sidebar -->
 	<aside class="w-64 bg-(--color-forest) flex-shrink-0 hidden lg:flex flex-col">
 		<div class="p-6 border-b border-white/10">
