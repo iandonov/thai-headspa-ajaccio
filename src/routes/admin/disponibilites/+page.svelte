@@ -169,12 +169,12 @@
 	</div>
 	<p class="font-sans text-xs text-(--color-stone) mb-4">Cliquez sur un jour pour le fermer ou le rouvrir. Les jours fériés français sont fermés par défaut.</p>
 
-	<div class="grid grid-cols-7 gap-1 mb-1">
+	<div class="grid grid-cols-7 gap-1 mb-1 max-w-md">
 		{#each weekHeaders as h}
 			<div class="text-center font-sans text-xs uppercase tracking-wider text-(--color-stone) py-1">{h}</div>
 		{/each}
 	</div>
-	<div class="grid grid-cols-7 gap-1">
+	<div class="grid grid-cols-7 gap-1 max-w-md">
 		{#each cells as cell}
 			{#if cell === null}
 				<div></div>

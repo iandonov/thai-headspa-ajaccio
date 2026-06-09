@@ -8,6 +8,7 @@ export const users = sqliteTable('users', {
 	lastName: text('last_name').notNull(),
 	phone: text('phone'),
 	role: text('role', { enum: ['client', 'admin'] }).notNull().default('client'),
+	notes: text('notes'), // private admin annotations for the client dossier
 	createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });
 

@@ -26,6 +26,7 @@ export function initDatabase() {
 			last_name TEXT NOT NULL,
 			phone TEXT,
 			role TEXT NOT NULL DEFAULT 'client',
+				notes TEXT,
 			created_at INTEGER
 		);
 
@@ -98,7 +99,13 @@ export function initDatabase() {
 		sqlite.exec(`ALTER TABLE services ADD COLUMN beds INTEGER NOT NULL DEFAULT 1`);
 	}
 
-	seedDatabase();
+	// Migration: add `notes` column to existing users tables (pre-dossier DBs)
+		const userCols = sqlite.prepare(`PRAGMA table_info(users)`).all() as { name: string }[];
+		if (!userCols.some((c) => c.name === 'notes')) {
+			sqlite.exec(`ALTER TABLE users ADD COLUMN notes TEXT`);
+		}
+
+		seedDatabase();
 	seedPackages();
 	seedSettings();
 	seedHolidays();
