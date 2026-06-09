@@ -1,5 +1,6 @@
+import bcrypt from 'bcryptjs';
 import { db } from './index';
-import { services, availability, cmsContent, closures, settings } from './schema';
+import { services, availability, cmsContent, closures, settings, users } from './schema';
 import { eq } from 'drizzle-orm';
 import { frenchHolidays } from '../availability';
 
@@ -206,6 +207,44 @@ export function seedPackages() {
 	for (const c of formuleContent) {
 		const exists = db.select().from(cmsContent).where(eq(cmsContent.key, c.key)).all();
 		if (exists.length === 0) db.insert(cmsContent).values(c).run();
+	}
+}
+
+// Ensure at least one admin account exists so the /admin area is reachable after
+// a fresh install (e.g. an empty database deployed via scripts/init-db.ts).
+// Idempotent: does nothing once any admin is present. Credentials come from the
+// ADMIN_EMAIL / ADMIN_PASSWORD env vars, falling back to a documented default
+// that should be changed immediately in production.
+export function seedAdmin() {
+	const existingAdmin = db.select().from(users).where(eq(users.role, 'admin')).all();
+	if (existingAdmin.length > 0) return;
+
+	const email = (process.env.ADMIN_EMAIL ?? 'admin@thaiheadspa-ajaccio.fr').toLowerCase().trim();
+	const password = process.env.ADMIN_PASSWORD ?? 'Admin1234!';
+
+	// Never clobber an existing (non-admin) account that already owns this email —
+	// promote nothing automatically; just skip and let an operator handle it.
+	const existingEmail = db.select().from(users).where(eq(users.email, email)).all();
+	if (existingEmail.length > 0) return;
+
+	// hashSync keeps initDatabase() synchronous; matches auth.ts cost factor (12).
+	const passwordHash = bcrypt.hashSync(password, 12);
+	db.insert(users).values({
+		email,
+		passwordHash,
+		firstName: 'Admin',
+		lastName: 'Spa',
+		role: 'admin',
+		createdAt: new Date(),
+	}).run();
+
+	if (process.env.ADMIN_PASSWORD) {
+		console.log(`[seed] Admin account created: ${email}`);
+	} else {
+		console.warn(
+			`[seed] Default admin created (${email} / Admin1234!). ` +
+				`Set ADMIN_EMAIL / ADMIN_PASSWORD and change this password immediately.`
+		);
 	}
 }
 

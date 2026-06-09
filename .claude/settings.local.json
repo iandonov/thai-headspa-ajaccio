@@ -58,7 +58,14 @@
       "PowerShell(node tmp-shots.mjs)",
       "PowerShell(node tmp-shots2.mjs)",
       "Bash(npx playwright *)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(npx tsx *)",
+      "Bash(node /tmp/inspect.mjs)",
+      "Bash(pwsh -NoProfile -Command 'try { [void][System.Management.Automation.Language.Parser]::ParseFile\\('\\\\''scripts/deploy-db.ps1'\\\\'',[ref]$null,[ref]$null\\); '\\\\''deploy-db.ps1 parses OK'\\\\'' } catch { $_ }')",
+      "Bash(node _inspect.mjs)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"https://thai-headspa-ajaccio.azurewebsites.net\" -TimeoutSec 20 -SkipHttpErrorCheck; \"Status: $\\($r.StatusCode\\)\" } catch { \"Error: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(az webapp stop -n thai-headspa-ajaccio -g rg-thai-headspa 2>&1)",
+      "PowerShell(\"App stopped. Retrying fast deploy...\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\iando\\Videos"

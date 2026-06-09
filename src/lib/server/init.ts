@@ -1,7 +1,6 @@
 import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import * as schema from './db/schema';
-import { seedDatabase, seedPackages, seedSettings, seedHolidays } from './db/seed';
+import { createSchema } from './db/schema-ddl';
+import { seedDatabase, seedPackages, seedSettings, seedHolidays, seedAdmin } from './db/seed';
 
 let initialized = false;
 
@@ -14,99 +13,12 @@ export function initDatabase() {
 	sqlite.pragma('journal_mode = WAL');
 	sqlite.pragma('foreign_keys = ON');
 
-	const db = drizzle(sqlite, { schema });
+	// Create tables + bring older databases up to the latest schema.
+	createSchema(sqlite);
 
-	// Create tables
-	sqlite.exec(`
-		CREATE TABLE IF NOT EXISTS users (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			email TEXT NOT NULL UNIQUE,
-			password_hash TEXT NOT NULL,
-			first_name TEXT NOT NULL,
-			last_name TEXT NOT NULL,
-			phone TEXT,
-			role TEXT NOT NULL DEFAULT 'client',
-				notes TEXT,
-			created_at INTEGER
-		);
-
-		CREATE TABLE IF NOT EXISTS services (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			slug TEXT NOT NULL UNIQUE,
-			name TEXT NOT NULL,
-			description TEXT NOT NULL,
-			long_description TEXT,
-			duration INTEGER NOT NULL,
-			price REAL NOT NULL,
-			category TEXT NOT NULL DEFAULT 'massage',
-			options TEXT,
-			image_url TEXT,
-			active INTEGER NOT NULL DEFAULT 1,
-			sort_order INTEGER NOT NULL DEFAULT 0
-		);
-
-		CREATE TABLE IF NOT EXISTS availability (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			day_of_week INTEGER NOT NULL,
-			start_time TEXT NOT NULL,
-			end_time TEXT NOT NULL,
-			active INTEGER NOT NULL DEFAULT 1
-		);
-
-		CREATE TABLE IF NOT EXISTS bookings (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			user_id INTEGER REFERENCES users(id),
-			service_id INTEGER NOT NULL REFERENCES services(id),
-			guest_name TEXT,
-			guest_email TEXT,
-			guest_phone TEXT,
-			date TEXT NOT NULL,
-			start_time TEXT NOT NULL,
-			end_time TEXT NOT NULL,
-			status TEXT NOT NULL DEFAULT 'pending',
-			notes TEXT,
-			created_at INTEGER
-		);
-
-		CREATE TABLE IF NOT EXISTS cms_content (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			key TEXT NOT NULL UNIQUE,
-			value TEXT NOT NULL,
-			type TEXT NOT NULL DEFAULT 'text',
-			updated_at INTEGER
-		);
-
-		CREATE TABLE IF NOT EXISTS closures (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			date TEXT NOT NULL UNIQUE,
-			reason TEXT,
-			is_holiday INTEGER NOT NULL DEFAULT 0
-		);
-
-		CREATE TABLE IF NOT EXISTS settings (
-			key TEXT PRIMARY KEY,
-			value TEXT NOT NULL
-		);
-	`);
-
-	// Migration: add `options` column to existing service tables (pre-formules DBs)
-	const cols = sqlite.prepare(`PRAGMA table_info(services)`).all() as { name: string }[];
-	if (!cols.some((c) => c.name === 'options')) {
-		sqlite.exec(`ALTER TABLE services ADD COLUMN options TEXT`);
-	}
-	// Migration: add `beds` column to existing service tables (pre-beds DBs)
-	if (!cols.some((c) => c.name === 'beds')) {
-		sqlite.exec(`ALTER TABLE services ADD COLUMN beds INTEGER NOT NULL DEFAULT 1`);
-	}
-
-	// Migration: add `notes` column to existing users tables (pre-dossier DBs)
-		const userCols = sqlite.prepare(`PRAGMA table_info(users)`).all() as { name: string }[];
-		if (!userCols.some((c) => c.name === 'notes')) {
-			sqlite.exec(`ALTER TABLE users ADD COLUMN notes TEXT`);
-		}
-
-		seedDatabase();
+	seedDatabase();
 	seedPackages();
 	seedSettings();
 	seedHolidays();
+	seedAdmin();
 }
