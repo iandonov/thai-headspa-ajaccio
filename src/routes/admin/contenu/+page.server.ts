@@ -14,7 +14,7 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const key = String(data.get('key') || '');
 		const value = String(data.get('value') || '');
-		if (!key) return fail(400, { error: 'Key required' });
+		if (!key) return fail(400, { error: 'Clé requise.' });
 
 		const existing = db.select().from(cmsContent).where(eq(cmsContent.key, key)).all()[0];
 		if (existing) {

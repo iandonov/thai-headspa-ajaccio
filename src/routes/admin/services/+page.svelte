@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/stores';
 	import type { PageData, ActionData } from './$types';
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -32,6 +33,12 @@
 		if (orphans.length > 0) groups.push({ key: '__autres', name: 'Autres', services: orphans });
 		return groups;
 	});
+
+	// ?categorie=<slug> (set from the sidebar submenu) narrows the list down
+	// to a single category; no param shows everything.
+	const selectedCat = $derived($page.url.searchParams.get('categorie'));
+	const visibleGroups = $derived(selectedCat ? grouped.filter((g) => g.key === selectedCat) : grouped);
+	const selectedCatName = $derived(selectedCat ? (categoryName.get(selectedCat) ?? selectedCat) : null);
 
 	let showAdd = $state(false);
 </script>
@@ -107,7 +114,7 @@
 	</form>
 {/if}
 
-{#each grouped as group (group.key)}
+{#each visibleGroups as group (group.key)}
 	<div class="flex items-center gap-3 mt-10 mb-4 first:mt-0">
 		<h2 class="font-sans text-xs tracking-[0.25em] uppercase text-(--color-gold)">{group.name}</h2>
 		<div class="flex-1 h-px bg-(--color-sand)"></div>
@@ -187,6 +194,13 @@
 		{/each}
 	</div>
 {:else}
-	<p class="font-sans text-sm text-(--color-stone) py-10 text-center">Aucune prestation pour l'instant.</p>
+	<p class="font-sans text-sm text-(--color-stone) py-10 text-center">
+		{#if selectedCatName}
+			Aucune prestation dans la catégorie « {selectedCatName} ».
+			<a href="/admin/services" class="text-(--color-forest) underline hover:no-underline">Voir tout</a>
+		{:else}
+			Aucune prestation pour l'instant.
+		{/if}
+	</p>
 {/each}
 

@@ -10,7 +10,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const serviceId = Number(url.searchParams.get('serviceId'));
 
 	if (!dateStr || !serviceId) {
-		return json({ error: 'date and serviceId required' }, { status: 400 });
+		return json({ error: 'Paramètres date et serviceId requis.' }, { status: 400 });
 	}
 
 	// Date-specific closure (public holiday or manual) → no slots at all.

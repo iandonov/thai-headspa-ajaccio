@@ -24,7 +24,11 @@ await ctx.addCookies([
 const page = await ctx.newPage();
 
 const shots = process.argv.slice(2).length
-	? process.argv.slice(2).map((s) => s.split('='))
+	? process.argv.slice(2).map((s) => {
+			// split on the FIRST '=' only — paths may carry a query string
+			const i = s.indexOf('=');
+			return [s.slice(0, i), s.slice(i + 1)];
+	  })
 	: [
 			['admin-prestations', '/admin/services/prestations'],
 			['admin-formules', '/admin/services/formules'],

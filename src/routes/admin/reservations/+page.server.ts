@@ -89,7 +89,7 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const id = Number(data.get('id'));
 		const status = String(data.get('status')) as 'pending' | 'confirmed' | 'cancelled' | 'completed';
-		if (!id || !status) return fail(400, { error: 'Invalid' });
+		if (!id || !status) return fail(400, { error: 'Requête invalide.' });
 		db.update(bookings).set({ status }).where(eq(bookings.id, id)).run();
 		return { success: true };
 	},

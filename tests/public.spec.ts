@@ -12,8 +12,19 @@ test.describe('Public site', () => {
 		await page.goto('/services');
 		await expect(page.getByRole('heading', { name: 'Soins & Massages' })).toBeVisible();
 		// A seeded base prestation and a formule should both be shown.
+		// ('Nos Formules' also exists as a hidden nav-submenu link, so target the heading.)
 		await expect(page.getByText('Réflexologie Pieds & Mains').first()).toBeVisible();
-		await expect(page.getByText('Nos Formules').first()).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Nos Formules' })).toBeVisible();
+	});
+
+	test('category pills filter the services page', async ({ page }) => {
+		await page.goto('/services');
+		await page.getByRole('link', { name: 'Head Spa', exact: true }).click();
+		await expect(page).toHaveURL(/\/services\?categorie=head-spa/);
+		// Only the Head Spa section remains; the formules section is filtered out.
+		// (level 2 = the category heading; a service card h3 is also named 'Head Spa')
+		await expect(page.getByRole('heading', { name: 'Head Spa', exact: true, level: 2 })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Nos Formules', level: 2 })).not.toBeVisible();
 	});
 
 	test('home CTA navigates to the reservation flow', async ({ page }) => {

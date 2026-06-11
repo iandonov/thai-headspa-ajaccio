@@ -51,7 +51,7 @@
 						href={link.href}
 						class="font-sans text-sm tracking-wider transition-all duration-200
 							{isActive(link.href)
-								? (scrolled ? 'text-(--color-gold)' : 'text-(--color-gold)')
+								? 'text-(--color-gold)'
 								: (scrolled ? 'text-(--color-charcoal) hover:text-(--color-gold)' : 'text-white/90 hover:text-white')}
 						"
 					>
