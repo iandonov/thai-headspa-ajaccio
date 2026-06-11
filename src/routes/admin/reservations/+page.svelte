@@ -197,12 +197,71 @@
 </section>
 
 <!-- ============================ DAY DETAIL ============================ -->
+{#snippet statusBadge(status: string)}
+	<span class="whitespace-nowrap px-2 py-0.5 rounded-full text-xs border {statusColor[status]}">{statusLabel[status]}</span>
+{/snippet}
+
+<!-- rounded-2xl (not -full) so long options that wrap don't become oval blobs -->
+{#snippet optionChips(option: string)}
+	{#each option.split(', ') as opt}
+		<span class="inline-block font-sans text-xs px-2.5 py-1 rounded-2xl bg-(--color-forest)/10 border border-(--color-forest)/30 text-(--color-forest)">{opt}</span>
+	{/each}
+{/snippet}
+
+{#snippet statusForm(b: (typeof data.bookings)[number], selectClass: string)}
+	<form method="POST" action="?/updateStatus" use:enhance class="flex gap-1">
+		<input type="hidden" name="id" value={b.id} />
+		<select name="status" class="{selectClass} text-xs border border-(--color-sand) rounded-sm px-2 py-1 bg-white text-(--color-charcoal) focus:outline-none focus:border-(--color-forest)" value={b.status}>
+			<option value="pending">En attente</option>
+			<option value="confirmed">Confirmer</option>
+			<option value="completed">Terminé</option>
+			<option value="cancelled">Annuler</option>
+		</select>
+		<button type="submit" class="px-2 py-1 bg-(--color-forest) text-white text-xs rounded-sm hover:bg-(--color-forest-light) transition-colors">OK</button>
+	</form>
+{/snippet}
+
 <section class="bg-white rounded-(--radius-card) border border-(--color-sand)/60 overflow-hidden">
-	<div class="px-6 pt-5 pb-3 border-b border-(--color-sand)/40">
+	<div class="px-4 md:px-6 pt-5 pb-3 border-b border-(--color-sand)/40">
 		<h2 class="font-serif text-xl text-(--color-charcoal) capitalize">{formatDateFR(selectedDate)}</h2>
 		<p class="font-sans text-xs text-(--color-stone) mt-0.5">{dayBookings.length} réservation(s) ce jour</p>
 	</div>
-	<div class="overflow-x-auto">
+
+	<!-- Mobile: one stacked card per booking (the table doesn't fit) -->
+	<div class="md:hidden divide-y divide-(--color-sand)/40">
+		{#each dayBookings as b (b.id)}
+			<div class="p-4 space-y-2.5">
+				<div class="flex items-center justify-between gap-2">
+					<span class="font-sans text-sm font-medium text-(--color-charcoal)">{b.startTime} – {b.endTime}</span>
+					{@render statusBadge(b.status)}
+				</div>
+				<div class="flex items-baseline justify-between gap-2">
+					<div class="min-w-0">
+						<p class="font-sans text-sm font-medium text-(--color-charcoal)">
+							{b.firstName ? b.firstName + ' ' + b.lastName : b.guestName ?? 'Invité'}
+						</p>
+						<p class="font-sans text-xs text-(--color-stone) truncate">{b.email ?? b.guestEmail ?? '—'}</p>
+					</div>
+					<span class="font-serif text-base text-(--color-gold) shrink-0">{b.servicePrice}€</span>
+				</div>
+				<p class="font-sans text-sm text-(--color-stone)">{b.serviceName}</p>
+				{#if b.option}
+					<div class="flex flex-wrap gap-1">
+						{@render optionChips(b.option)}
+					</div>
+				{/if}
+				{#if b.notes}
+					<p class="font-sans text-xs text-(--color-stone)">{b.notes}</p>
+				{/if}
+				{@render statusForm(b, 'flex-1')}
+			</div>
+		{:else}
+			<p class="px-4 py-10 text-center font-sans text-sm text-(--color-stone)">Aucune réservation ce jour</p>
+		{/each}
+	</div>
+
+	<!-- Desktop: full table -->
+	<div class="hidden md:block overflow-x-auto">
 		<table class="w-full">
 			<thead class="bg-(--color-cream)">
 				<tr>
@@ -214,17 +273,19 @@
 			<tbody class="divide-y divide-(--color-sand)/40">
 				{#each dayBookings as b (b.id)}
 					<tr class="hover:bg-(--color-cream)/30 transition-colors">
-						<td class="px-4 py-3 font-sans text-sm text-(--color-charcoal) whitespace-nowrap">{b.startTime} – {b.endTime}</td>
-						<td class="px-4 py-3">
+						<td class="align-top px-4 py-3 font-sans text-sm text-(--color-charcoal) whitespace-nowrap">{b.startTime} – {b.endTime}</td>
+						<td class="align-top px-4 py-3">
 							<p class="font-sans text-sm font-medium text-(--color-charcoal)">
 								{b.firstName ? b.firstName + ' ' + b.lastName : b.guestName ?? 'Invité'}
 							</p>
 							<p class="font-sans text-xs text-(--color-stone)">{b.email ?? b.guestEmail ?? '—'}</p>
 						</td>
-						<td class="px-4 py-3 font-sans text-sm text-(--color-stone)">{b.serviceName}</td>
-						<td class="px-4 py-3">
+						<td class="align-top px-4 py-3 font-sans text-sm text-(--color-stone)">{b.serviceName}</td>
+						<td class="align-top px-4 py-3">
 							{#if b.option}
-								<span class="inline-block font-sans text-xs px-2.5 py-1 rounded-full bg-(--color-forest)/10 border border-(--color-forest)/30 text-(--color-forest)">{b.option}</span>
+								<div class="flex flex-col items-start gap-1">
+									{@render optionChips(b.option)}
+								</div>
 							{:else}
 								<span class="font-sans text-xs text-(--color-stone)/50">—</span>
 							{/if}
@@ -232,21 +293,12 @@
 								<p class="font-sans text-xs text-(--color-stone) mt-1 max-w-50 truncate" title={b.notes}>{b.notes}</p>
 							{/if}
 						</td>
-						<td class="px-4 py-3 font-serif text-base text-(--color-gold)">{b.servicePrice}€</td>
-						<td class="px-4 py-3">
-							<span class="px-2 py-0.5 rounded-full text-xs border {statusColor[b.status]}">{statusLabel[b.status]}</span>
+						<td class="align-top px-4 py-3 font-serif text-base text-(--color-gold)">{b.servicePrice}€</td>
+						<td class="align-top px-4 py-3">
+							{@render statusBadge(b.status)}
 						</td>
-						<td class="px-4 py-3">
-							<form method="POST" action="?/updateStatus" use:enhance class="flex gap-1">
-								<input type="hidden" name="id" value={b.id} />
-								<select name="status" class="text-xs border border-(--color-sand) rounded-sm px-2 py-1 bg-white text-(--color-charcoal) focus:outline-none focus:border-(--color-forest)" value={b.status}>
-									<option value="pending">En attente</option>
-									<option value="confirmed">Confirmer</option>
-									<option value="completed">Terminé</option>
-									<option value="cancelled">Annuler</option>
-								</select>
-								<button type="submit" class="px-2 py-1 bg-(--color-forest) text-white text-xs rounded-sm hover:bg-(--color-forest-light) transition-colors">OK</button>
-							</form>
+						<td class="align-top px-4 py-3">
+							{@render statusForm(b, '')}
 						</td>
 					</tr>
 				{:else}

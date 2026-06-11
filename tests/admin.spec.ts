@@ -251,10 +251,12 @@ test.describe('Admin · réservations', () => {
 		await expect(cell).toContainText('1 rés.');
 
 		// The nearest day with bookings is selected by default — its list shows
-		// the service and the option chip picked at booking time.
-		await expect(page.locator('tr', { hasText: 'Option Vue' })).toBeVisible();
-		await expect(page.getByText('Massage Personnalisé')).toBeVisible();
-		await expect(page.getByText('Aromathérapie', { exact: true })).toBeVisible();
+		// the service and the option chip picked at booking time. Scope to the
+		// booking row: the same data also renders in the (hidden) mobile cards.
+		const row = page.locator('tr', { hasText: 'Option Vue' });
+		await expect(row).toBeVisible();
+		await expect(row.getByText('Massage Personnalisé')).toBeVisible();
+		await expect(row.getByText('Aromathérapie', { exact: true })).toBeVisible();
 	});
 
 	test('a day with no remaining capacity is marked Complet', async ({ page }) => {

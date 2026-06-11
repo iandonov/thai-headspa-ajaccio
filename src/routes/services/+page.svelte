@@ -40,16 +40,26 @@
 		].map((c) => [c, grouped[c]] as const)
 	);
 
-	// One selectable option per service card; the choice rides along to /reservation.
-	let chosenOption = $state<Record<number, string>>({});
+	// Selectable options per service card (multi-select, all selected by default);
+	// the choices ride along to /reservation.
+	let chosenOptions = $state<Record<number, string[]>>({});
 
-	function toggleOption(serviceId: number, opt: string) {
-		chosenOption[serviceId] = chosenOption[serviceId] === opt ? '' : opt;
+	type ServiceRow = { id: number; options: string | null };
+
+	function optionsFor(service: ServiceRow): string[] {
+		return chosenOptions[service.id] ?? parseOptions(service.options);
 	}
 
-	function reserveHref(serviceId: number): string {
-		const opt = chosenOption[serviceId];
-		return `/reservation?service=${serviceId}` + (opt ? `&option=${encodeURIComponent(opt)}` : '');
+	function toggleOption(service: ServiceRow, opt: string) {
+		const current = optionsFor(service);
+		chosenOptions[service.id] = current.includes(opt)
+			? current.filter((o) => o !== opt)
+			: [...current, opt];
+	}
+
+	function reserveHref(service: ServiceRow): string {
+		return `/reservation?service=${service.id}`
+			+ optionsFor(service).map((o) => `&option=${encodeURIComponent(o)}`).join('');
 	}
 </script>
 
@@ -110,12 +120,13 @@
 										<p class="font-sans text-[0.7rem] tracking-widest uppercase text-(--color-gold) mb-2">Options au choix</p>
 										<div class="flex flex-wrap gap-2">
 											{#each opts as opt}
-												<button type="button" onclick={() => toggleOption(service.id, opt)}
-													aria-pressed={chosenOption[service.id] === opt}
+												{@const optSelected = optionsFor(service).includes(opt)}
+												<button type="button" onclick={() => toggleOption(service, opt)}
+													aria-pressed={optSelected}
 													class="font-sans text-xs px-3 py-1.5 rounded-full border transition-all duration-150 cursor-pointer
-														{chosenOption[service.id] === opt
-															? 'bg-(--color-forest) border-(--color-forest) text-white shadow-sm'
-															: 'bg-(--color-cream) border-(--color-sand) text-(--color-stone) hover:border-(--color-forest)'}">
+														{optSelected
+															? 'bg-(--color-cream) border-(--color-sand) text-(--color-charcoal)'
+															: 'bg-transparent border-transparent text-(--color-stone) hover:border-(--color-sand)'}">
 													{opt}
 												</button>
 											{/each}
@@ -123,7 +134,7 @@
 									</div>
 								{/if}
 								<div class="mt-6 pt-6 border-t border-(--color-sand)">
-									<a href={reserveHref(service.id)} class="btn-primary w-full justify-center text-xs py-3">
+									<a href={reserveHref(service)} class="btn-primary w-full justify-center text-xs py-3">
 										Réserver ce soin
 									</a>
 								</div>

@@ -65,7 +65,8 @@
       "Bash(node _inspect.mjs)",
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"https://thai-headspa-ajaccio.azurewebsites.net\" -TimeoutSec 20 -SkipHttpErrorCheck; \"Status: $\\($r.StatusCode\\)\" } catch { \"Error: $\\($_.Exception.Message\\)\" })",
       "PowerShell(az webapp stop -n thai-headspa-ajaccio -g rg-thai-headspa 2>&1)",
-      "PowerShell(\"App stopped. Retrying fast deploy...\")"
+      "PowerShell(\"App stopped. Retrying fast deploy...\")",
+      "PowerShell(npx playwright test booking.spec.ts 2>&1)"
     ],
     "additionalDirectories": [
       "C:\\Users\\iando\\Videos"

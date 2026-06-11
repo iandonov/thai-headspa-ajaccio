@@ -21,14 +21,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.all();
 
 	const preselectedId = url.searchParams.get('service');
-	const preselectedOption = url.searchParams.get('option');
+	const preselectedOptions = url.searchParams.getAll('option').filter(Boolean);
 
 	return {
 		services: allServices,
 		categories: db.select().from(categories).orderBy(categories.sortOrder).all(),
 		user: locals.user,
 		preselectedServiceId: preselectedId ? Number(preselectedId) : null,
-		preselectedOption: preselectedOption || null,
+		preselectedOptions,
 	};
 };
 

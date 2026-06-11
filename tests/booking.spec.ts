@@ -47,15 +47,24 @@ test('a selected option chip is stored on the booking', async ({ page }) => {
 
 	await page.goto('/reservation');
 
-	// Clicking an option chip selects both the service and the option. Retried
-	// in case the first click lands before Svelte hydration.
+	// Selecting a service preselects all its option chips. Retried in case the
+	// first click lands before Svelte hydration. (Click the card title, not the
+	// card itself, so the click can't land on one of the chips.)
 	const card = page.locator('[role="button"]').filter({ hasText: 'Massage Personnalisé' });
-	const chip = card.getByRole('button', { name: 'Aromathérapie', exact: true });
 	const nextBtn = page.getByRole('button', { name: /Choisir un créneau/ });
 	await expect(async () => {
-		await chip.click();
+		await card.getByText('Massage Personnalisé', { exact: true }).click();
 		await expect(nextBtn).toBeEnabled({ timeout: 1000 });
 	}).toPass({ timeout: 15_000 });
+	const chips = card.getByRole('button');
+	for (const chip of await chips.all()) {
+		await expect(chip).toHaveAttribute('aria-pressed', 'true');
+	}
+
+	// Deselect every option except Aromathérapie.
+	for (const chip of await chips.all()) {
+		if ((await chip.textContent())?.trim() !== 'Aromathérapie') await chip.click();
+	}
 	await expect(card.getByText(/Sélectionné · Aromathérapie/)).toBeVisible();
 	await nextBtn.click();
 

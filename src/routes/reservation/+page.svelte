@@ -9,7 +9,12 @@
 	// These capture the load-time preselection once; untrack makes the intentional
 	// one-time read of the reactive `data` prop explicit (and silences the warning).
 	let selectedServiceId = $state(untrack(() => data.preselectedServiceId ?? null));
-	let selectedOption = $state(untrack(() => data.preselectedOption ?? ''));
+	// All options start selected; URL params (from the services page) narrow them down.
+	let selectedOptions = $state<string[]>(untrack(() => {
+		if (data.preselectedOptions.length > 0) return data.preselectedOptions;
+		const svc = data.services.find((s) => s.id === data.preselectedServiceId);
+		return parseOptions(svc?.options ?? null);
+	}));
 	let selectedDate = $state('');
 	let selectedSlot = $state('');
 	let loadingSlots = $state(false);
@@ -52,11 +57,13 @@
 		}
 	}
 
-	// Selectable options of the chosen service (the client picks one chip).
+	// Selectable options of the chosen service (the client can pick several chips).
 	const serviceOptions = $derived(parseOptions(selectedService?.options ?? null));
 
 	function toggleOption(opt: string) {
-		selectedOption = selectedOption === opt ? '' : opt;
+		selectedOptions = selectedOptions.includes(opt)
+			? selectedOptions.filter((o) => o !== opt)
+			: [...selectedOptions, opt];
 	}
 
 	// Group services by category for step 1; categories come from the DB.
@@ -230,8 +237,8 @@
 									<div
 										role="button"
 										tabindex="0"
-										onclick={() => { if (selectedServiceId !== service.id) selectedOption = ''; selectedServiceId = service.id; }}
-										onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (selectedServiceId !== service.id) selectedOption = ''; selectedServiceId = service.id; } }}
+										onclick={() => { if (selectedServiceId !== service.id) selectedOptions = serviceOpts; selectedServiceId = service.id; }}
+										onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (selectedServiceId !== service.id) selectedOptions = serviceOpts; selectedServiceId = service.id; } }}
 										class="text-left p-5 rounded-sm border-2 transition-all duration-200 flex flex-col cursor-pointer {isSelected ? 'border-(--color-forest) bg-(--color-forest)/5' : 'border-(--color-sand) hover:border-(--color-forest)/40'}"
 									>
 										<div class="flex justify-between items-start mb-2">
@@ -245,19 +252,20 @@
 												<p class="font-sans text-[0.65rem] tracking-widest uppercase text-(--color-gold)/80 mb-1.5">Options au choix</p>
 												<div class="flex flex-wrap gap-1.5">
 													{#each serviceOpts as opt}
-														{@const optSelected = isSelected && selectedOption === opt}
+														<!-- Unselected cards preview the default: all options selected. -->
+														{@const optSelected = isSelected ? selectedOptions.includes(opt) : true}
 														<button
 															type="button"
 															aria-pressed={optSelected}
 															onclick={(e) => {
 																e.stopPropagation();
-																if (selectedServiceId !== service.id) { selectedServiceId = service.id; selectedOption = opt; }
+																if (selectedServiceId !== service.id) { selectedServiceId = service.id; selectedOptions = serviceOpts; }
 																else toggleOption(opt);
 															}}
 															class="font-sans text-xs px-2.5 py-1 rounded-full border transition-all duration-150
 																{optSelected
-																	? 'bg-(--color-forest) border-(--color-forest) text-white shadow-sm'
-																	: 'bg-(--color-cream) border-(--color-sand) text-(--color-stone) hover:border-(--color-forest)'}"
+																	? 'bg-(--color-cream) border-(--color-sand) text-(--color-charcoal)'
+																	: 'bg-transparent border-transparent text-(--color-stone) hover:border-(--color-sand)'}"
 														>
 															{opt}
 														</button>
@@ -270,7 +278,7 @@
 												<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
 													<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
 												</svg>
-												<span class="font-sans text-xs">Sélectionné{selectedOption ? ` · ${selectedOption}` : ''}</span>
+												<span class="font-sans text-xs">Sélectionné{selectedOptions.length ? ` · ${selectedOptions.join(', ')}` : ''}</span>
 											</div>
 										{/if}
 									</div>
@@ -304,18 +312,17 @@
 								{#if serviceOptions.length > 0}
 									<div class="flex flex-wrap gap-1.5 mt-2">
 										{#each serviceOptions as opt}
-											<button type="button" aria-pressed={selectedOption === opt} onclick={() => toggleOption(opt)}
+											<button type="button" aria-pressed={selectedOptions.includes(opt)} onclick={() => toggleOption(opt)}
 												class="font-sans text-[0.7rem] px-2 py-0.5 rounded-full border transition-all duration-150
-													{selectedOption === opt
-														? 'bg-(--color-forest) border-(--color-forest) text-white shadow-sm'
-														: 'bg-(--color-cream) border-(--color-sand) text-(--color-stone) hover:border-(--color-forest)'}">
+													{selectedOptions.includes(opt)
+														? 'bg-(--color-cream) border-(--color-sand) text-(--color-charcoal)'
+														: 'bg-transparent border-transparent text-(--color-stone) hover:border-(--color-sand)'}">
 												{opt}
 											</button>
 										{/each}
 									</div>
 								{/if}
 							</div>
-							<button type="button" onclick={() => { step = 1; }} class="font-sans text-xs text-(--color-gold) hover:underline">Modifier</button>
 						</div>
 					{/if}
 
@@ -445,10 +452,10 @@
 								<span class="text-(--color-stone)">Soin</span>
 								<span class="text-(--color-charcoal) font-medium">{selectedService?.name}</span>
 							</div>
-							{#if selectedOption}
+							{#if selectedOptions.length > 0}
 								<div class="flex justify-between gap-4">
-									<span class="text-(--color-stone) shrink-0">Option</span>
-									<span class="text-(--color-charcoal) font-medium text-right">{selectedOption}</span>
+									<span class="text-(--color-stone) shrink-0">Option{selectedOptions.length > 1 ? 's' : ''}</span>
+									<span class="text-(--color-charcoal) font-medium text-right">{selectedOptions.join(', ')}</span>
 								</div>
 							{/if}
 							<div class="flex justify-between">
@@ -587,7 +594,7 @@
 							<input type="hidden" name="serviceId" value={selectedServiceId} />
 							<input type="hidden" name="date" value={selectedDate} />
 							<input type="hidden" name="startTime" value={selectedSlot} />
-							<input type="hidden" name="option" value={selectedOption} />
+							<input type="hidden" name="option" value={selectedOptions.join(', ')} />
 
 							<div class="flex justify-between mt-8">
 								<button type="button" onclick={() => step = 2} class="btn-ghost">← Retour</button>
