@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { createSchema } from './db/schema-ddl';
-import { seedDatabase, seedPackages, seedSettings, seedHolidays, seedAdmin } from './db/seed';
+import { seedDatabase, seedPackages, seedSettings, seedHolidays, seedAdmin, seedCategories } from './db/seed';
 
 let initialized = false;
 
@@ -18,6 +18,7 @@ export function initDatabase() {
 
 	seedDatabase();
 	seedPackages();
+	seedCategories();
 	seedSettings();
 	seedHolidays();
 	seedAdmin();

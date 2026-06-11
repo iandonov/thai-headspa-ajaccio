@@ -59,7 +59,7 @@
 		playsinline
 		poster="/images/hero-poster.jpg"
 	>
-		<source src="/videos/hero.mp4" type="video/mp4" />
+		<source src="/videos/hero3.mp4" type="video/mp4" />
 	</video>
 	<!-- Light neutral scrim (no green tint) — keeps the video visible while the
 		 centered title stays legible via a soft radial darkening behind the text -->

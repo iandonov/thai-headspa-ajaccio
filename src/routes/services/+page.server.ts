@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db/index';
-import { services } from '$lib/server/db/schema';
+import { services, categories } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
 export const load: PageServerLoad = async () => {
@@ -8,5 +8,6 @@ export const load: PageServerLoad = async () => {
 		.where(eq(services.active, true))
 		.orderBy(services.sortOrder)
 		.all();
-	return { services: allServices };
+	const allCategories = db.select().from(categories).orderBy(categories.sortOrder).all();
+	return { services: allServices, categories: allCategories };
 };

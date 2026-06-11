@@ -85,7 +85,12 @@
 					<tbody class="divide-y divide-(--color-sand)/40">
 						{#each data.history as b (b.id)}
 							<tr class="hover:bg-(--color-cream)/30 transition-colors">
-								<td class="px-4 py-3 font-sans text-sm text-(--color-charcoal)">{b.serviceName ?? '—'}</td>
+								<td class="px-4 py-3 font-sans text-sm text-(--color-charcoal)">
+									{b.serviceName ?? '—'}
+									{#if b.option}
+										<span class="block font-sans text-xs text-(--color-stone) mt-0.5">{b.option}</span>
+									{/if}
+								</td>
 								<td class="px-4 py-3 font-sans text-sm text-(--color-stone)">{fmtDate(b.date)}</td>
 								<td class="px-4 py-3 font-sans text-sm text-(--color-stone)">{b.startTime}</td>
 								<td class="px-4 py-3 font-serif text-base text-(--color-gold)">{b.servicePrice ?? 0}€</td>

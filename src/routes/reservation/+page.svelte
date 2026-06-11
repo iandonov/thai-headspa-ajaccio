@@ -52,24 +52,24 @@
 		}
 	}
 
-	// Options included in a formule (read-only — booking the formule books them all).
-	const includedOptions = $derived(parseOptions(selectedService?.options ?? null));
+	// Selectable options of the chosen service (the client picks one chip).
+	const serviceOptions = $derived(parseOptions(selectedService?.options ?? null));
 
-	// Group services by category for step 1, mirroring the /services page.
-	const categoryLabels: Record<string, string> = {
-		'formule': 'Nos Formules',
-		'head-spa': 'Head Spa',
-		'reflexologie': 'Réflexologie',
-		'facial': 'Soins du Visage',
-		'massage': 'Massages Corps',
-	};
+	function toggleOption(opt: string) {
+		selectedOption = selectedOption === opt ? '' : opt;
+	}
+
+	// Group services by category for step 1; categories come from the DB.
+	const categoryLabels = $derived(
+		Object.fromEntries(data.categories.map((c) => [c.slug, c.name])) as Record<string, string>
+	);
 	const groupedServices = $derived.by(() => {
 		const grouped = data.services.reduce((acc, s) => {
 			(acc[s.category] ??= []).push(s);
 			return acc;
 		}, {} as Record<string, typeof data.services>);
 		const ordered = [
-			...Object.keys(categoryLabels).filter((c) => grouped[c]),
+			...data.categories.map((c) => c.slug).filter((c) => grouped[c]),
 			...Object.keys(grouped).filter((c) => !(c in categoryLabels)),
 		];
 		return ordered.map((c) => [c, grouped[c]] as const);
@@ -225,10 +225,14 @@
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								{#each services as service}
 									{@const serviceOpts = parseOptions(service.options)}
-									<button
-										type="button"
+									{@const isSelected = selectedServiceId === service.id}
+									<!-- div (not button) so the option chips inside can be real buttons -->
+									<div
+										role="button"
+										tabindex="0"
 										onclick={() => { if (selectedServiceId !== service.id) selectedOption = ''; selectedServiceId = service.id; }}
-										class="text-left p-5 rounded-sm border-2 transition-all duration-200 flex flex-col {selectedServiceId === service.id ? 'border-(--color-forest) bg-(--color-forest)/5' : 'border-(--color-sand) hover:border-(--color-forest)/40'}"
+										onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (selectedServiceId !== service.id) selectedOption = ''; selectedServiceId = service.id; } }}
+										class="text-left p-5 rounded-sm border-2 transition-all duration-200 flex flex-col cursor-pointer {isSelected ? 'border-(--color-forest) bg-(--color-forest)/5' : 'border-(--color-sand) hover:border-(--color-forest)/40'}"
 									>
 										<div class="flex justify-between items-start mb-2">
 											<span class="font-sans text-xs tracking-widest uppercase text-(--color-gold)">{formatDuration(service.duration)}</span>
@@ -238,26 +242,38 @@
 										<p class="font-sans text-xs text-(--color-stone) mt-1 leading-relaxed">{service.description}</p>
 										{#if serviceOpts.length > 0}
 											<div class="mt-3">
-												<p class="font-sans text-[0.65rem] tracking-widest uppercase text-(--color-gold)/80 mb-1.5">Options incluses</p>
-												<ul class="space-y-1">
+												<p class="font-sans text-[0.65rem] tracking-widest uppercase text-(--color-gold)/80 mb-1.5">Options au choix</p>
+												<div class="flex flex-wrap gap-1.5">
 													{#each serviceOpts as opt}
-														<li class="flex items-start gap-1.5 font-sans text-xs text-(--color-stone) leading-snug">
-															<svg class="w-3 h-3 mt-0.5 shrink-0 text-(--color-forest)/70" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
-															<span>{opt}</span>
-														</li>
+														{@const optSelected = isSelected && selectedOption === opt}
+														<button
+															type="button"
+															aria-pressed={optSelected}
+															onclick={(e) => {
+																e.stopPropagation();
+																if (selectedServiceId !== service.id) { selectedServiceId = service.id; selectedOption = opt; }
+																else toggleOption(opt);
+															}}
+															class="font-sans text-xs px-2.5 py-1 rounded-full border transition-all duration-150
+																{optSelected
+																	? 'bg-(--color-forest) border-(--color-forest) text-white shadow-sm'
+																	: 'bg-(--color-cream) border-(--color-sand) text-(--color-stone) hover:border-(--color-forest)'}"
+														>
+															{opt}
+														</button>
 													{/each}
-												</ul>
+												</div>
 											</div>
 										{/if}
-										{#if selectedServiceId === service.id}
+										{#if isSelected}
 											<div class="mt-3 pt-3 border-t border-(--color-forest)/15 flex items-center gap-2 text-(--color-forest)">
 												<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
 													<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
 												</svg>
-												<span class="font-sans text-xs">Sélectionné</span>
+												<span class="font-sans text-xs">Sélectionné{selectedOption ? ` · ${selectedOption}` : ''}</span>
 											</div>
 										{/if}
-									</button>
+									</div>
 								{/each}
 							</div>
 						</div>
@@ -285,10 +301,16 @@
 							<div class="flex-1">
 								<p class="font-serif text-base text-(--color-charcoal)">{selectedService.name}</p>
 								<p class="font-sans text-xs text-(--color-stone)">{formatDuration(selectedService.duration)} · {selectedService.price}€</p>
-								{#if includedOptions.length > 0}
+								{#if serviceOptions.length > 0}
 									<div class="flex flex-wrap gap-1.5 mt-2">
-										{#each includedOptions as opt}
-											<span class="font-sans text-[0.7rem] px-2 py-0.5 rounded-full bg-(--color-cream) border border-(--color-sand) text-(--color-stone)">{opt}</span>
+										{#each serviceOptions as opt}
+											<button type="button" aria-pressed={selectedOption === opt} onclick={() => toggleOption(opt)}
+												class="font-sans text-[0.7rem] px-2 py-0.5 rounded-full border transition-all duration-150
+													{selectedOption === opt
+														? 'bg-(--color-forest) border-(--color-forest) text-white shadow-sm'
+														: 'bg-(--color-cream) border-(--color-sand) text-(--color-stone) hover:border-(--color-forest)'}">
+												{opt}
+											</button>
 										{/each}
 									</div>
 								{/if}
@@ -423,10 +445,10 @@
 								<span class="text-(--color-stone)">Soin</span>
 								<span class="text-(--color-charcoal) font-medium">{selectedService?.name}</span>
 							</div>
-							{#if includedOptions.length > 0}
+							{#if selectedOption}
 								<div class="flex justify-between gap-4">
-									<span class="text-(--color-stone) shrink-0">Inclus</span>
-									<span class="text-(--color-charcoal) font-medium text-right">{includedOptions.join(' · ')}</span>
+									<span class="text-(--color-stone) shrink-0">Option</span>
+									<span class="text-(--color-charcoal) font-medium text-right">{selectedOption}</span>
 								</div>
 							{/if}
 							<div class="flex justify-between">

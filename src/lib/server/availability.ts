@@ -48,6 +48,16 @@ export function peakBedUsage(
 	return peak;
 }
 
+/**
+ * A booking blocks its bed from its start until the *next bookable window*
+ * after session end + studio prep: the end is rounded up to the next slot
+ * boundary of the day's grid (anchored at the working-day start). Thanks to
+ * half-open interval semantics a boundary-exact end frees the very next slot.
+ */
+export function blockUntilNextSlot(endMin: number, gridStartMin: number, step = 30): number {
+	return gridStartMin + Math.ceil((endMin - gridStartMin) / step) * step;
+}
+
 /** True when a service needing `serviceBeds` fits in [startMin, endMin). */
 export function hasCapacity(opts: {
 	startMin: number;
@@ -63,6 +73,12 @@ export function hasCapacity(opts: {
 /**
  * Walk the working window in `step`-minute increments and report, for each
  * candidate start that fully fits before `availEndMin`, whether a bed is free.
+ *
+ * `bufferMin` is the studio-preparation time the new service needs after the
+ * session: the bed stays occupied for [t, t + duration + buffer) rounded up to
+ * the next slot boundary (see blockUntilNextSlot), but the session itself only
+ * has to fit inside the working window (cleanup may run past closing). Callers
+ * must likewise extend `existing` interval ends with each booking's own buffer.
  */
 export function computeSlots(opts: {
 	availStartMin: number;
@@ -72,14 +88,16 @@ export function computeSlots(opts: {
 	totalBeds: number;
 	existing: Interval[];
 	step?: number;
+	bufferMin?: number;
 }): { time: string; available: boolean }[] {
 	const step = opts.step ?? 30;
+	const buffer = opts.bufferMin ?? 0;
 	const slots: { time: string; available: boolean }[] = [];
 
 	for (let t = opts.availStartMin; t + opts.durationMin <= opts.availEndMin; t += step) {
 		const available = hasCapacity({
 			startMin: t,
-			endMin: t + opts.durationMin,
+			endMin: blockUntilNextSlot(t + opts.durationMin + buffer, opts.availStartMin, step),
 			serviceBeds: opts.serviceBeds,
 			totalBeds: opts.totalBeds,
 			existing: opts.existing,

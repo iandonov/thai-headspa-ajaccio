@@ -101,6 +101,9 @@
 									{new Date(booking.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
 									· {booking.startTime} – {booking.endTime}
 								</p>
+								{#if booking.option}
+									<span class="inline-block mt-2 font-sans text-xs px-2.5 py-1 rounded-full bg-(--color-cream) border border-(--color-sand) text-(--color-stone)">{booking.option}</span>
+								{/if}
 							</div>
 							<div class="flex items-center gap-3">
 								<span class="px-3 py-1 rounded-full text-xs font-sans border {statusColor[booking.status]}">

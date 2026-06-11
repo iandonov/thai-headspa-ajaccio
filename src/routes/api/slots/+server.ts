@@ -3,7 +3,7 @@ import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db/index';
 import { availability, bookings, services, closures, settings } from '$lib/server/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
-import { computeSlots, toMin } from '$lib/server/availability';
+import { computeSlots, toMin, blockUntilNextSlot } from '$lib/server/availability';
 
 export const GET: RequestHandler = async ({ url }) => {
 	const dateStr = url.searchParams.get('date');
@@ -34,18 +34,27 @@ export const GET: RequestHandler = async ({ url }) => {
 	const totalBeds = bedsRow ? Number(bedsRow.value) : 1;
 
 	// Pending and confirmed bookings both occupy beds (cancelled ones free them).
-	// Join services to know how many beds each existing booking consumes.
+	// Join services to know how many beds each existing booking consumes and how
+	// long the studio stays blocked afterwards (buffer_minutes prep time).
 	const existing = db.select({
 		startTime: bookings.startTime,
 		endTime: bookings.endTime,
 		beds: services.beds,
+		bufferMinutes: services.bufferMinutes,
 	})
 		.from(bookings)
 		.leftJoin(services, eq(bookings.serviceId, services.id))
 		.where(and(eq(bookings.date, dateStr), inArray(bookings.status, ['pending', 'confirmed'])))
 		.all();
 
-	const intervals = existing.map((b) => ({ s: toMin(b.startTime), e: toMin(b.endTime), beds: b.beds ?? 1 }));
+	// Each booking blocks its bed until the next slot boundary after session
+	// end + prep time, so the freed window always starts on the booking grid.
+	const gridStart = toMin(avail.startTime);
+	const intervals = existing.map((b) => ({
+		s: toMin(b.startTime),
+		e: blockUntilNextSlot(toMin(b.endTime) + (b.bufferMinutes ?? 0), gridStart),
+		beds: b.beds ?? 1,
+	}));
 
 	const slots = computeSlots({
 		availStartMin: toMin(avail.startTime),
@@ -54,6 +63,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		serviceBeds,
 		totalBeds,
 		existing: intervals,
+		bufferMin: service.bufferMinutes ?? 0,
 	});
 
 	return json({ slots });

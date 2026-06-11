@@ -4,12 +4,14 @@ import {
 	nextWeekday,
 	serviceIdBySlug,
 	setBeds,
+	setServiceBuffer,
 	clearBookings,
 	seedBooking,
 	addClosure,
 	removeClosure,
 	resetAvailabilityToSeed,
 	countBookings,
+	lastBookingOption,
 	selectServiceAndContinue,
 	pickFirstDayWithSlots,
 } from './helpers';
@@ -36,6 +38,41 @@ test('guest can complete a booking end-to-end', async ({ page }) => {
 
 	await expect(page).toHaveURL(/\/reservation\/confirmation/);
 	await expect(page.getByRole('heading', { name: /Demande Envoyée/ })).toBeVisible();
+});
+
+test('a selected option chip is stored on the booking', async ({ page }) => {
+	resetAvailabilityToSeed();
+	setBeds(3);
+	clearBookings();
+
+	await page.goto('/reservation');
+
+	// Clicking an option chip selects both the service and the option. Retried
+	// in case the first click lands before Svelte hydration.
+	const card = page.locator('[role="button"]').filter({ hasText: 'Massage Personnalisé' });
+	const chip = card.getByRole('button', { name: 'Aromathérapie', exact: true });
+	const nextBtn = page.getByRole('button', { name: /Choisir un créneau/ });
+	await expect(async () => {
+		await chip.click();
+		await expect(nextBtn).toBeEnabled({ timeout: 1000 });
+	}).toPass({ timeout: 15_000 });
+	await expect(card.getByText(/Sélectionné · Aromathérapie/)).toBeVisible();
+	await nextBtn.click();
+
+	const slot = await pickFirstDayWithSlots(page);
+	await slot.click();
+	await page.getByRole('button', { name: /Continuer/ }).click();
+
+	// The recap lists the chosen option.
+	await expect(page.getByText('Option', { exact: true })).toBeVisible();
+	await expect(page.getByText('Aromathérapie', { exact: true })).toBeVisible();
+
+	await page.locator('#guest-name').fill('Option Testeur');
+	await page.locator('#guest-email').fill('option.testeur@example.com');
+	await page.getByRole('button', { name: 'Confirmer la réservation' }).click();
+	await expect(page).toHaveURL(/\/reservation\/confirmation/);
+
+	expect(lastBookingOption()).toBe('Aromathérapie');
 });
 
 test.describe('slots API — working days, holidays, non-working days', () => {
@@ -110,6 +147,30 @@ test.describe('slots API — bed capacity', () => {
 		setBeds(2);
 		slots = (await (await request.get(`/api/slots?date=${tue}&serviceId=${reflexId}`)).json()).slots;
 		expect(slots.find((s: { time: string }) => s.time === '10:00').available).toBe(true);
+	});
+
+	test('the prep buffer keeps the bed blocked between sessions', async ({ request }) => {
+		resetAvailabilityToSeed();
+		setBeds(1);
+		clearBookings();
+
+		const reflexId = serviceIdBySlug('reflexologie'); // 30-min service
+		setServiceBuffer(reflexId, 30); // studio needs 30 min between clients
+		const tue = ymd(nextWeekday(2));
+		removeClosure(tue);
+		// Occupy 10:00–10:30 (+ 30 min prep → bed blocked until 11:00).
+		seedBooking({ serviceId: reflexId, date: tue, startTime: '10:00', endTime: '10:30', status: 'confirmed' });
+
+		const res = await request.get(`/api/slots?date=${tue}&serviceId=${reflexId}`);
+		const slots: { time: string; available: boolean }[] = (await res.json()).slots;
+		const byTime = Object.fromEntries(slots.map((s) => [s.time, s.available]));
+
+		expect(byTime['09:00']).toBe(true);  // 09:00–09:30 + prep ends exactly at 10:00 → free
+		expect(byTime['09:30']).toBe(false); // its own prep (until 10:30) overlaps the booking
+		expect(byTime['10:30']).toBe(false); // studio still being prepared after the booking
+		expect(byTime['11:00']).toBe(true);  // prep done → free
+
+		setServiceBuffer(reflexId, 0);
 	});
 
 	test('cancelled bookings do not consume a bed', async ({ request }) => {

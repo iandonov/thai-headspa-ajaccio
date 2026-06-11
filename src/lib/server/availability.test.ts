@@ -5,6 +5,7 @@ import {
 	peakBedUsage,
 	hasCapacity,
 	computeSlots,
+	blockUntilNextSlot,
 	frenchHolidays,
 	type Interval
 } from './availability';
@@ -181,6 +182,59 @@ describe('computeSlots — capacity interaction with existing bookings', () => {
 			existing: []
 		});
 		expect(slots.map((s) => s.time)).toEqual(['09:00', '09:30']);
+	});
+});
+
+describe('blockUntilNextSlot — allocation rounded to the booking grid', () => {
+	it('rounds an off-grid end up to the next slot boundary', () => {
+		// 10:15 end on a 09:00-anchored grid → blocked until 10:30.
+		expect(blockUntilNextSlot(toMin('10:15'), toMin('09:00'))).toBe(toMin('10:30'));
+	});
+
+	it('keeps a boundary-exact end as-is', () => {
+		expect(blockUntilNextSlot(toMin('10:30'), toMin('09:00'))).toBe(toMin('10:30'));
+	});
+
+	it('anchors to the working-day start, not midnight', () => {
+		// 09:15-anchored grid → boundaries at :15/:45.
+		expect(blockUntilNextSlot(toMin('10:20'), toMin('09:15'))).toBe(toMin('10:45'));
+	});
+});
+
+describe('computeSlots — prep buffer between sessions', () => {
+	it('the buffer blocks the slots needed to prepare the studio', () => {
+		// 30-min service with 30-min prep on 1 bed: a 10:00–10:30 booking
+		// (blocked until 11:00) and the candidate's own prep interact.
+		const slots = computeSlots({
+			availStartMin: toMin('09:00'),
+			availEndMin: toMin('12:00'),
+			durationMin: 30,
+			serviceBeds: 1,
+			totalBeds: 1,
+			bufferMin: 30,
+			existing: [{ s: toMin('10:00'), e: toMin('11:00'), beds: 1 }] // end already extended by its buffer
+		});
+		const byTime = Object.fromEntries(slots.map((s) => [s.time, s.available]));
+		expect(byTime['09:00']).toBe(true); // 09:00–09:30 + prep ends exactly at 10:00
+		expect(byTime['09:30']).toBe(false); // its own prep overlaps the booking
+		expect(byTime['10:30']).toBe(false); // studio still being prepared
+		expect(byTime['11:00']).toBe(true);
+	});
+
+	it('an off-grid duration+buffer is allocated up to the next slot', () => {
+		// 75-min service, 0 prep, 1 bed: candidate at 09:00 occupies until 10:30
+		// (rounded), so a second 75-min booking can start at 10:30 but not 10:00.
+		const slots = computeSlots({
+			availStartMin: toMin('09:00'),
+			availEndMin: toMin('18:00'),
+			durationMin: 75,
+			serviceBeds: 1,
+			totalBeds: 1,
+			existing: [{ s: toMin('09:00'), e: toMin('10:30'), beds: 1 }] // 09:00–10:15 booking, rounded
+		});
+		const byTime = Object.fromEntries(slots.map((s) => [s.time, s.available]));
+		expect(byTime['10:00']).toBe(false);
+		expect(byTime['10:30']).toBe(true);
 	});
 });
 

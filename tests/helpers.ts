@@ -96,6 +96,20 @@ export function clearBookings() {
 	withDb((db) => db.prepare('DELETE FROM bookings').run());
 }
 
+// Studio prep time (minutes) a service blocks its bed for after each session.
+export function setServiceBuffer(serviceId: number, minutes: number) {
+	withDb((db) => db.prepare('UPDATE services SET buffer_minutes = ? WHERE id = ?').run(minutes, serviceId));
+}
+
+export function categoryExists(name: string): boolean {
+	return withDb((db) => !!db.prepare('SELECT 1 FROM categories WHERE name = ?').get(name));
+}
+
+// Remove leftover categories from previous (failed) test runs.
+export function removeCategoriesLike(namePrefix: string) {
+	withDb((db) => db.prepare('DELETE FROM categories WHERE name LIKE ?').run(`${namePrefix}%`));
+}
+
 export function bookingStatus(id: number): string | undefined {
 	return withDb((db) => {
 		const row = db.prepare('SELECT status FROM bookings WHERE id = ?').get(id) as
@@ -132,13 +146,14 @@ export function seedBooking(opts: {
 	userId?: number | null;
 	guestName?: string;
 	guestEmail?: string;
+	option?: string | null;
 }): number {
 	return withDb((db) => {
 		const r = db
 			.prepare(
 				`INSERT INTO bookings
-				 (user_id, service_id, guest_name, guest_email, date, start_time, end_time, status, created_at)
-				 VALUES (?,?,?,?,?,?,?,?,?)`
+				 (user_id, service_id, guest_name, guest_email, date, start_time, end_time, status, option, created_at)
+				 VALUES (?,?,?,?,?,?,?,?,?,?)`
 			)
 			.run(
 				opts.userId ?? null,
@@ -149,9 +164,20 @@ export function seedBooking(opts: {
 				opts.startTime,
 				opts.endTime,
 				opts.status ?? 'confirmed',
+				opts.option ?? null,
 				Date.now()
 			);
 		return Number(r.lastInsertRowid);
+	});
+}
+
+// The `option` column of the most recently created booking (selected chip).
+export function lastBookingOption(): string | null {
+	return withDb((db) => {
+		const row = db.prepare('SELECT option FROM bookings ORDER BY id DESC LIMIT 1').get() as
+			| { option: string | null }
+			| undefined;
+		return row?.option ?? null;
 	});
 }
 
@@ -194,9 +220,10 @@ export function resetAvailabilityToSeed() {
 
 // Step 1: select a service by its visible name and advance to the date step.
 // Retries the (client-side) selection until "next" enables, in case the first
-// click lands before Svelte hydration.
+// click lands before Svelte hydration. The card is a div[role="button"] (so its
+// option chips can be real buttons inside it).
 export async function selectServiceAndContinue(page: Page, serviceName: string) {
-	const serviceBtn = page.locator('button', { hasText: serviceName }).first();
+	const serviceBtn = page.locator('button, [role="button"]').filter({ hasText: serviceName }).first();
 	const nextBtn = page.getByRole('button', { name: /Choisir un créneau/ });
 	await expect(async () => {
 		await serviceBtn.click();

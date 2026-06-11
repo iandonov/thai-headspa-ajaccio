@@ -12,6 +12,15 @@ export const users = sqliteTable('users', {
 	createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });
 
+// Service categories, editable in the admin. `services.category` stores the
+// category slug (kept as text, no FK, so legacy rows with unknown slugs still load).
+export const categories = sqliteTable('categories', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	slug: text('slug').notNull().unique(),
+	name: text('name').notNull(),
+	sortOrder: integer('sort_order').notNull().default(0),
+});
+
 export const services = sqliteTable('services', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	slug: text('slug').notNull().unique(),
@@ -21,8 +30,9 @@ export const services = sqliteTable('services', {
 	duration: integer('duration').notNull(), // minutes
 	price: real('price').notNull(),
 	category: text('category').notNull().default('massage'),
-	options: text('options'), // JSON array of selectable option labels (for formules)
+	options: text('options'), // JSON array of selectable option labels
 	beds: integer('beds').notNull().default(1), // how many beds/tables this prestation occupies
+	bufferMinutes: integer('buffer_minutes').notNull().default(0), // studio prep time after each session
 	imageUrl: text('image_url'),
 	active: integer('active', { mode: 'boolean' }).notNull().default(true),
 	sortOrder: integer('sort_order').notNull().default(0),
@@ -47,6 +57,7 @@ export const bookings = sqliteTable('bookings', {
 	startTime: text('start_time').notNull(), // "HH:MM"
 	endTime: text('end_time').notNull(),
 	status: text('status', { enum: ['pending', 'confirmed', 'cancelled', 'completed'] }).notNull().default('pending'),
+	option: text('option'), // selected option chip (one of the service's `options`)
 	notes: text('notes'),
 	createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });

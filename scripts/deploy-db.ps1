@@ -13,11 +13,12 @@
       npm run db:init           # writes ./spa.db (empty, latest schema)
       npm run deploy-db -- -Force
 
-  Flow: stop the app → upload the DB (and empty -wal/-shm to clobber any stale
-  WAL sidecars, which would otherwise corrupt the new file) → start the app →
-  poll until the site serves 200. On the next boot the app recreates any missing
-  schema and reseeds reference content (services, availability, holidays,
-  settings) since the tables are empty.
+  Flow: stop the app → delete any stale -wal/-shm sidecars via the Kudu VFS API
+  (a leftover WAL would be replayed into the new file on next open, corrupting
+  it; OneDeploy rejects zero-byte uploads so they can't just be overwritten) →
+  upload the DB → start the app → poll until the site serves 200. On the next
+  boot the app recreates any missing schema and reseeds reference content
+  (services, availability, holidays, settings) since the tables are empty.
 
   Auth mirrors deploy-azure.ps1: it runs `az login` if needed (add -DeviceCode on
   a headless machine; -Tenant <id> if the subscription's tenant enforces MFA).
@@ -39,17 +40,79 @@ param(
 $ErrorActionPreference = 'Stop'
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $BaseUrl = "https://$App.azurewebsites.net"
+# Kudu's VFS API roots at /home on Linux App Service.
+$VfsBase = "https://$App.scm.azurewebsites.net/api/vfs/" + (($RemoteDir -replace '^/home/?', '').TrimEnd('/'))
 
 function Step($msg) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 
 function Invoke-AzLogin {
-  $loginArgs = @('login', '--only-show-errors')
+  # The ARM scope matters: the Kudu VFS API is called with a bearer token for
+  # that audience, and an MFA-enforcing tenant only issues it during an
+  # interactive login that requested it.
+  $loginArgs = @('login', '--only-show-errors', '--scope', 'https://management.azure.com//.default')
   if ($Tenant)     { $loginArgs += @('--tenant', $Tenant) }
   if ($DeviceCode) { $loginArgs += '--use-device-code' }
   Write-Host ("Launching az login{0}..." -f $(if ($Tenant) { " (tenant $Tenant)" } else { '' })) -ForegroundColor Yellow
   az @loginArgs | Out-Null
   if ($LASTEXITCODE -ne 0) {
     throw "az login failed. If the tenant enforces MFA, re-run with -Tenant <id>; on a machine without a browser add -DeviceCode."
+  }
+}
+
+function Get-ArmAccessToken {
+  $t = az account get-access-token --resource 'https://management.azure.com/' --query accessToken -o tsv 2>$null
+  if ($LASTEXITCODE -eq 0 -and $t) { return $t }
+  return $null
+}
+
+# Bearer-token header for the Kudu (SCM) site — basic publishing credentials
+# are disabled by default on newer App Service apps.
+function Get-KuduAuthHeader {
+  $token = Get-ArmAccessToken
+  if (-not $token) {
+    Write-Host 'The cached session cannot mint an ARM access token (MFA required) — re-authenticating...' -ForegroundColor Yellow
+    Invoke-AzLogin
+    az account set --subscription $Subscription 2>$null | Out-Null
+    $token = Get-ArmAccessToken
+  }
+  if (-not $token) { throw 'Could not obtain an ARM access token for the Kudu API even after re-login.' }
+  return @{ Authorization = "Bearer $token" }
+}
+
+# Wait until the Kudu (SCM) site responds — its container cold-starts on the
+# first request. Done BEFORE the app is stopped so failures cost no downtime.
+function Wait-KuduReady($Headers) {
+  $deadline = (Get-Date).AddSeconds(240)
+  while ((Get-Date) -lt $deadline) {
+    $r = $null
+    try {
+      $r = Invoke-WebRequest -Uri "$VfsBase/" -Headers $Headers -TimeoutSec 30 -SkipHttpErrorCheck
+    } catch {
+      Write-Host "  Kudu not ready yet ($($_.Exception.Message))"
+    }
+    if ($r -and $r.StatusCode -eq 200) { return }
+    if ($r -and $r.StatusCode -in 401, 403) {
+      throw "Kudu rejected the credentials (HTTP $($r.StatusCode)). Check that your account has access to the SCM site."
+    }
+    if ($r) { Write-Host "  Kudu returned $($r.StatusCode) — retrying..." }
+    Start-Sleep -Seconds 5
+  }
+  throw 'The Kudu (SCM) site did not respond within 4 minutes.'
+}
+
+# Delete one remote file via the Kudu VFS API (404 → already absent, fine).
+# OneDeploy rejects zero-byte uploads (HTTP 400), so stale WAL sidecars are
+# removed this way rather than overwritten with empty files.
+function Remove-RemoteFile($Headers, $Name) {
+  $h = @{} + $Headers
+  $h['If-Match'] = '*'
+  try {
+    Invoke-WebRequest -Uri "$VfsBase/$Name" -Method Delete -Headers $h -TimeoutSec 60 | Out-Null
+    Write-Host "  × $Name removed"
+  } catch {
+    $status = $_.Exception.Response.StatusCode.value__
+    if ($status -eq 404) { Write-Host "  · $Name not present"; return }
+    throw "Delete failed for $Name (HTTP $status): $($_.Exception.Message)"
   }
 }
 
@@ -79,8 +142,7 @@ function Test-Healthy {
 
 # --- main --------------------------------------------------------------------
 
-$emptyWal = $null
-$emptyShm = $null
+$appStopped = $false
 try {
   Step 'Preflight'
   if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
@@ -111,26 +173,29 @@ try {
   Write-Host "Account: $(az account show --query 'user.name' -o tsv)  /  $App ($ResourceGroup)"
   Write-Warning "About to REPLACE $RemoteDir/$DbName with '$File' ($size). Existing server data will be lost."
 
+  # Warm up Kudu while the app is still running — failures here cost no downtime.
+  Step 'Checking Kudu'
+  $kudu = Get-KuduAuthHeader
+  Wait-KuduReady $kudu
+
   # Stop the app so nothing holds the SQLite file open while we replace it.
   Step 'Stopping app'
   az webapp stop -n $App -g $ResourceGroup | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "az webapp stop failed (exit $LASTEXITCODE)." }
-
-  # Zero-byte sidecars to clobber any stale WAL from the previous database — a
-  # leftover -wal whose header doesn't match the new file can corrupt reads.
-  $emptyWal = New-TemporaryFile
-  $emptyShm = New-TemporaryFile
-  [System.IO.File]::WriteAllBytes($emptyWal, @())
-  [System.IO.File]::WriteAllBytes($emptyShm, @())
+  $appStopped = $true
 
   Step 'Uploading database'
-  Push-File $File              "$RemoteDir/$DbName"
-  Push-File $emptyWal.FullName "$RemoteDir/$DbName-wal"
-  Push-File $emptyShm.FullName "$RemoteDir/$DbName-shm"
+  # Remove the stale WAL sidecars FIRST — a leftover -wal from the previous
+  # database would be replayed into the new file on the next open, corrupting
+  # it. Only then replace the database file itself.
+  Remove-RemoteFile $kudu "$DbName-wal"
+  Remove-RemoteFile $kudu "$DbName-shm"
+  Push-File $File "$RemoteDir/$DbName"
 
   Step 'Starting app'
   az webapp start -n $App -g $ResourceGroup | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "az webapp start failed (exit $LASTEXITCODE)." }
+  $appStopped = $false
 
   Step 'Verifying live site'
   if (Test-Healthy) {
@@ -140,6 +205,8 @@ try {
   }
 }
 finally {
-  if ($emptyWal) { Remove-Item -Force $emptyWal -ErrorAction SilentlyContinue }
-  if ($emptyShm) { Remove-Item -Force $emptyShm -ErrorAction SilentlyContinue }
+  if ($appStopped) {
+    Write-Warning 'Restarting the app after an error...'
+    az webapp start -n $App -g $ResourceGroup | Out-Null
+  }
 }

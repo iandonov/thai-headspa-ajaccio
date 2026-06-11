@@ -18,8 +18,7 @@
 			label: 'Soins & Tarifs',
 			icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
 			children: [
-				{ href: '/admin/services/prestations', label: 'À la carte' },
-				{ href: '/admin/services/formules', label: 'Formules' },
+				{ href: '/admin/services/categories', label: 'Catégories' },
 			],
 		},
 		{ href: '/admin/contenu', label: 'Contenu CMS', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
@@ -28,12 +27,23 @@
 
 	function isActive(href: string) {
 		if (href === '/admin') return $page.url.pathname === '/admin';
+		if (href === '/admin/services') {
+			// Don't double-highlight the parent when the Catégories child is active.
+			return $page.url.pathname.startsWith(href) && !$page.url.pathname.startsWith('/admin/services/categories');
+		}
 		return $page.url.pathname.startsWith(href);
 	}
+
+	// Mobile navigation drawer state — closes on every navigation.
+	let mobileOpen = $state(false);
+	$effect(() => {
+		$page.url.pathname;
+		mobileOpen = false;
+	});
 </script>
 
 <div class="h-screen flex bg-(--color-cream) overflow-hidden">
-	<!-- Sidebar -->
+	<!-- Sidebar (desktop) -->
 	<aside class="w-64 bg-(--color-forest) flex-shrink-0 hidden lg:flex flex-col">
 		<div class="p-6 border-b border-white/10">
 			<a href="/" class="block">
@@ -80,15 +90,66 @@
 		</div>
 	</aside>
 
-	<!-- Mobile top nav -->
-	<div class="lg:hidden fixed top-0 left-0 right-0 z-50 bg-(--color-forest) px-4 py-3 flex items-center justify-between">
-		<a href="/admin" class="font-serif text-white">Admin</a>
-		<a href="/" class="font-sans text-xs text-white/60">Voir le site</a>
+	<!-- Mobile top bar + collapsible navigation -->
+	<div class="lg:hidden fixed top-0 left-0 right-0 z-50 bg-(--color-forest)">
+		<div class="px-4 py-3 flex items-center justify-between">
+			<a href="/admin" class="font-serif text-white">Thai Head Spa <span class="font-sans text-[10px] tracking-[0.25em] uppercase text-(--color-gold) ml-1">Admin</span></a>
+			<button
+				type="button"
+				onclick={() => (mobileOpen = !mobileOpen)}
+				aria-label={mobileOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+				aria-expanded={mobileOpen}
+				class="w-9 h-9 grid place-items-center rounded-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+			>
+				{#if mobileOpen}
+					<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12" />
+					</svg>
+				{:else}
+					<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16M4 18h16" />
+					</svg>
+				{/if}
+			</button>
+		</div>
+		{#if mobileOpen}
+			<nav class="px-4 pb-4 space-y-1 border-t border-white/10 pt-2 max-h-[70vh] overflow-y-auto">
+				{#each navItems as item}
+					<a
+						href={item.href}
+						class="flex items-center gap-3 px-3 py-2.5 rounded-sm font-sans text-sm
+							{isActive(item.href) ? 'bg-white/15 text-white' : 'text-white/60'}"
+					>
+						<svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d={item.icon} />
+						</svg>
+						{item.label}
+					</a>
+					{#if item.children}
+						{#each item.children as sub}
+							<a
+								href={sub.href}
+								class="block ml-10 px-3 py-2 rounded-sm font-sans text-[13px]
+									{isActive(sub.href) ? 'text-(--color-gold)' : 'text-white/50'}"
+							>
+								{sub.label}
+							</a>
+						{/each}
+					{/if}
+				{/each}
+				<a href="/" class="flex items-center gap-2 px-3 py-2.5 text-white/50 text-xs font-sans border-t border-white/10 mt-2 pt-3">
+					<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+					</svg>
+					Voir le site
+				</a>
+			</nav>
+		{/if}
 	</div>
 
 	<!-- Main content -->
-	<main class="flex-1 overflow-auto pt-0 lg:pt-0">
-		<div class="max-w-6xl mx-auto px-6 py-8 lg:py-10 mt-12 lg:mt-0">
+	<main class="flex-1 overflow-auto">
+		<div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 lg:py-10 mt-12 lg:mt-0">
 			{@render children()}
 		</div>
 	</main>

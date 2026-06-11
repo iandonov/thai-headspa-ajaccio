@@ -1,10 +1,10 @@
 import type { Actions, PageServerLoad } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db/index';
-import { services, bookings, availability, users, closures, settings } from '$lib/server/db/schema';
+import { services, bookings, availability, users, closures, settings, categories } from '$lib/server/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { verifyPassword, hashPassword, createToken } from '$lib/server/auth';
-import { hasCapacity, toMin } from '$lib/server/availability';
+import { hasCapacity, toMin, blockUntilNextSlot } from '$lib/server/availability';
 
 const SESSION_COOKIE = {
 	path: '/',
@@ -25,6 +25,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	return {
 		services: allServices,
+		categories: db.select().from(categories).orderBy(categories.sortOrder).all(),
 		user: locals.user,
 		preselectedServiceId: preselectedId ? Number(preselectedId) : null,
 		preselectedOption: preselectedOption || null,
@@ -101,8 +102,7 @@ export const actions: Actions = {
 		const date = String(data.get('date') || '');
 		const startTime = String(data.get('startTime') || '');
 		const option = String(data.get('option') || '').trim();
-		const userNotes = String(data.get('notes') || '').trim();
-		const notes = [option ? `Option choisie : ${option}` : '', userNotes].filter(Boolean).join('\n');
+		const notes = String(data.get('notes') || '').trim();
 
 		// Guest or logged in
 		const guestName = String(data.get('guestName') || '').trim();
@@ -144,20 +144,25 @@ export const actions: Actions = {
 			startTime: bookings.startTime,
 			endTime: bookings.endTime,
 			beds: services.beds,
+			bufferMinutes: services.bufferMinutes,
 		})
 			.from(bookings)
 			.leftJoin(services, eq(bookings.serviceId, services.id))
 			.where(and(eq(bookings.date, date), inArray(bookings.status, ['pending', 'confirmed'])))
 			.all();
 
+		// Each booking blocks its bed from its start until the next bookable slot
+		// boundary after session end + studio prep buffer.
+		const gridStart = toMin(avail.startTime);
 		const intervals = sameDay.map((b) => ({
 			s: toMin(b.startTime),
-			e: toMin(b.endTime),
+			e: blockUntilNextSlot(toMin(b.endTime) + (b.bufferMinutes ?? 0), gridStart),
 			beds: b.beds ?? 1,
 		}));
 
 		// Reject if no bed is free for this prestation during the chosen window.
-		if (!hasCapacity({ startMin, endMin: endMinutes, serviceBeds, totalBeds, existing: intervals })) {
+		const occupiedEnd = blockUntilNextSlot(endMinutes + (service.bufferMinutes ?? 0), gridStart);
+		if (!hasCapacity({ startMin, endMin: occupiedEnd, serviceBeds, totalBeds, existing: intervals })) {
 			return fail(409, { error: 'Ce créneau vient d’être réservé. Veuillez en choisir un autre.' });
 		}
 
@@ -171,6 +176,7 @@ export const actions: Actions = {
 			startTime,
 			endTime,
 			status: 'pending',
+			option: option || null,
 			notes: notes || null,
 			createdAt: new Date(),
 		}).run();

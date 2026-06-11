@@ -79,6 +79,13 @@ export function createSchema(sqlite: Database.Database): void {
 			key TEXT PRIMARY KEY,
 			value TEXT NOT NULL
 		);
+
+		CREATE TABLE IF NOT EXISTS categories (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			slug TEXT NOT NULL UNIQUE,
+			name TEXT NOT NULL,
+			sort_order INTEGER NOT NULL DEFAULT 0
+		);
 	`);
 
 	// Migration: add `options` column to existing service tables (pre-formules DBs)
@@ -89,6 +96,16 @@ export function createSchema(sqlite: Database.Database): void {
 	// Migration: add `beds` column to existing service tables (pre-beds DBs)
 	if (!cols.some((c) => c.name === 'beds')) {
 		sqlite.exec(`ALTER TABLE services ADD COLUMN beds INTEGER NOT NULL DEFAULT 1`);
+	}
+	// Migration: add `buffer_minutes` (studio prep time between sessions)
+	if (!cols.some((c) => c.name === 'buffer_minutes')) {
+		sqlite.exec(`ALTER TABLE services ADD COLUMN buffer_minutes INTEGER NOT NULL DEFAULT 0`);
+	}
+
+	// Migration: add `option` column to existing bookings tables (selected option chip)
+	const bookingCols = sqlite.prepare(`PRAGMA table_info(bookings)`).all() as { name: string }[];
+	if (!bookingCols.some((c) => c.name === 'option')) {
+		sqlite.exec(`ALTER TABLE bookings ADD COLUMN option TEXT`);
 	}
 
 	// Migration: add `notes` column to existing users tables (pre-dossier DBs)

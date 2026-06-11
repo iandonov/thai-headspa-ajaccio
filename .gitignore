@@ -27,6 +27,9 @@ vite.config.ts.timestamp-*
 *.db-shm
 *.db-wal
 
+# Production DB snapshots from scripts/migrate-db-azure.ps1
+/backups
+
 # Playwright
 /test-results
 /playwright-report

@@ -1,17 +1,7 @@
-import type { Actions, PageServerLoad } from './$types';
-import { db } from '$lib/server/db/index';
-import { services } from '$lib/server/db/schema';
-import { updateService, deleteService, createPackage } from '../shared';
+import type { PageServerLoad } from './$types';
+import { redirect } from '@sveltejs/kit';
 
+// "À la carte" and "Formules" were merged into the single /admin/services page.
 export const load: PageServerLoad = async () => {
-	const all = db.select().from(services).orderBy(services.sortOrder).all();
-	return {
-		packages: all.filter((s) => s.category === 'formule'),
-	};
-};
-
-export const actions: Actions = {
-	update: updateService,
-	delete: deleteService,
-	createPackage,
+	redirect(307, '/admin/services');
 };

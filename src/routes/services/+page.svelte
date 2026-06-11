@@ -9,13 +9,10 @@
 		return h + 'h' + (m ? m + 'min' : '');
 	}
 
-	const categories: Record<string, string> = {
-		'formule': 'Nos Formules',
-		'head-spa': 'Head Spa',
-		'reflexologie': 'Réflexologie',
-		'facial': 'Soins du Visage',
-		'massage': 'Massages Corps',
-	};
+	// Categories come from the DB (admin-editable), in their configured order.
+	const categories = $derived(
+		Object.fromEntries(data.categories.map((c) => [c.slug, c.name])) as Record<string, string>
+	);
 
 	function parseOptions(raw: string | null): string[] {
 		if (!raw) return [];
@@ -35,13 +32,25 @@
 		}, {} as Record<string, typeof data.services>)
 	);
 
-	// Order categories to match the `categories` map (formules first), then any extras
+	// Order categories to match the DB order, then any extras
 	const orderedGroups = $derived(
 		[
-			...Object.keys(categories).filter((c) => grouped[c]),
+			...data.categories.map((c) => c.slug).filter((c) => grouped[c]),
 			...Object.keys(grouped).filter((c) => !(c in categories)),
 		].map((c) => [c, grouped[c]] as const)
 	);
+
+	// One selectable option per service card; the choice rides along to /reservation.
+	let chosenOption = $state<Record<number, string>>({});
+
+	function toggleOption(serviceId: number, opt: string) {
+		chosenOption[serviceId] = chosenOption[serviceId] === opt ? '' : opt;
+	}
+
+	function reserveHref(serviceId: number): string {
+		const opt = chosenOption[serviceId];
+		return `/reservation?service=${serviceId}` + (opt ? `&option=${encodeURIComponent(opt)}` : '');
+	}
 </script>
 
 <svelte:head>
@@ -101,13 +110,20 @@
 										<p class="font-sans text-[0.7rem] tracking-widest uppercase text-(--color-gold) mb-2">Options au choix</p>
 										<div class="flex flex-wrap gap-2">
 											{#each opts as opt}
-												<span class="font-sans text-xs px-3 py-1.5 rounded-full bg-(--color-cream) border border-(--color-sand) text-(--color-stone)">{opt}</span>
+												<button type="button" onclick={() => toggleOption(service.id, opt)}
+													aria-pressed={chosenOption[service.id] === opt}
+													class="font-sans text-xs px-3 py-1.5 rounded-full border transition-all duration-150 cursor-pointer
+														{chosenOption[service.id] === opt
+															? 'bg-(--color-forest) border-(--color-forest) text-white shadow-sm'
+															: 'bg-(--color-cream) border-(--color-sand) text-(--color-stone) hover:border-(--color-forest)'}">
+													{opt}
+												</button>
 											{/each}
 										</div>
 									</div>
 								{/if}
 								<div class="mt-6 pt-6 border-t border-(--color-sand)">
-									<a href="/reservation?service={service.id}" class="btn-primary w-full justify-center text-xs py-3">
+									<a href={reserveHref(service.id)} class="btn-primary w-full justify-center text-xs py-3">
 										Réserver ce soin
 									</a>
 								</div>

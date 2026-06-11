@@ -19,6 +19,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			startTime: bookings.startTime,
 			endTime: bookings.endTime,
 			status: bookings.status,
+			option: bookings.option,
 			notes: bookings.notes,
 			createdAt: bookings.createdAt,
 			serviceName: services.name,

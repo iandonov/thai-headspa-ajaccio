@@ -22,7 +22,9 @@
 		"deploy-azure": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-azure.ps1",
 		"deploy-azure:fast": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-azure.ps1 -Fast",
 		"db:init": "npx tsx scripts/init-db.ts",
-		"deploy-db": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-db.ps1"
+		"db:migrate": "npx tsx scripts/migrate-db.ts",
+		"deploy-db": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-db.ps1",
+		"deploy-db:migrate": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/migrate-db-azure.ps1"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.60.0",

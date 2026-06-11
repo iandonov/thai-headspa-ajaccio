@@ -7,6 +7,7 @@ import {
 	serviceIdBySlug,
 	userIdByEmail,
 	setBeds,
+	getBeds,
 	clearBookings,
 	seedBooking,
 	addClosure,
@@ -15,6 +16,8 @@ import {
 	setAvailability,
 	countBookings,
 	bookingStatus,
+	categoryExists,
+	removeCategoriesLike,
 	selectServiceAndContinue,
 	pickFirstDayWithSlots,
 } from './helpers';
@@ -36,43 +39,116 @@ async function openToggleForm(page: Page, toggleName: RegExp, fieldSelector: str
 }
 
 test.describe('Admin · services', () => {
-	test('services are split into base prestations and formules sub-pages', async ({ page }) => {
-		// /admin/services redirects to the prestations sub-page.
+	test('the combined Soins & Tarifs page replaces the old sub-pages', async ({ page }) => {
 		await page.goto('/admin/services');
-		await expect(page).toHaveURL(/\/admin\/services\/prestations/);
-		await expect(page.getByRole('heading', { name: 'Prestations à la carte' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Soins & Tarifs' })).toBeVisible();
+		// Categories are managed on their own screen, linked from here.
+		await expect(page.getByRole('link', { name: 'leur propre écran' })).toBeVisible();
 
-		// Formules live on their own sub-page.
+		// The old sub-pages redirect to the combined page.
+		await page.goto('/admin/services/prestations');
+		await expect(page).toHaveURL(/\/admin\/services$/);
 		await page.goto('/admin/services/formules');
-		await expect(page.getByRole('heading', { name: 'Formules', exact: true })).toBeVisible();
+		await expect(page).toHaveURL(/\/admin\/services$/);
 	});
 
-	test('admin can add a new base prestation with a bed count', async ({ page }) => {
+	test('admin can add a new prestation with category, beds and prep buffer', async ({ page }) => {
 		await page.goto('/admin/services');
 		const name = `Soin Test ${Date.now()}`;
 
-		await openToggleForm(page, /Nouvelle prestation/, '#nb-name');
-		await page.locator('#nb-name').fill(name);
-		await page.locator('#nb-beds').fill('2');
-		await page.locator('#nb-duration').fill('45');
-		await page.locator('#nb-price').fill('40');
+		await openToggleForm(page, /Nouvelle prestation/, '#ns-name');
+		await page.locator('#ns-name').fill(name);
+		await page.locator('#ns-category').selectOption('massage');
+		await page.locator('#ns-beds').fill('2');
+		await page.locator('#ns-buffer').fill('20');
+		await page.locator('#ns-duration').fill('45');
+		await page.locator('#ns-price').fill('40');
 		await page.getByRole('button', { name: /Créer la prestation/ }).click();
 
-		// The new prestation appears in the list (rendered as its own heading).
+		// The new prestation appears in the list (rendered as its own heading),
+		// with its prep buffer summarised in the meta line.
 		await expect(page.getByRole('heading', { name })).toBeVisible();
+		const card = page.locator('div.bg-white', { has: page.getByRole('heading', { name }) });
+		await expect(card.getByText(/20 min de préparation/)).toBeVisible();
+	});
+
+	test('admin can create, rename and delete a category on the categories screen', async ({ page }) => {
+		page.on('dialog', (d) => d.accept());
+		removeCategoriesLike('Cat Test'); // leftovers from previous failed runs
+		await page.goto('/admin/services/categories');
+		await expect(page.getByRole('heading', { name: 'Catégories' })).toBeVisible();
+
+		// The created slug is predictable from the name — used to find the row.
+		const ts = Date.now();
+		const catName = `Cat Test ${ts}`;
+		const slug = `cat-test-${ts}`;
+
+		// The category forms are plain POST forms, so they work whether or not the
+		// click lands before hydration. The DB is the source of truth after each
+		// step (asserting on the DOM right away races the in-flight submission).
+		await page.locator('#nc-name').fill(catName);
+		await page.getByRole('button', { name: /Ajouter/ }).click();
+		await expect.poll(() => categoryExists(catName), { timeout: 10_000 }).toBe(true);
+
+		// Rename (slug stays stable, only the display name changes). Hydration can
+		// reset a too-early fill back to the server value (submitting the old
+		// name) — retrying the whole fill+submit+verify loop rides past that.
+		await page.goto('/admin/services/categories');
+		const renamed = `${catName} v2`;
+		const row = page.locator(`[data-slug="${slug}"]`);
+		const input = row.locator('input[name="name"]');
+		await expect(input).toHaveValue(catName);
+		await expect(async () => {
+			await input.fill(renamed);
+			await row.getByRole('button', { name: 'Renommer' }).click();
+			await expect.poll(() => categoryExists(renamed), { timeout: 3000 }).toBe(true);
+		}).toPass({ timeout: 20_000 });
+
+		// Delete (allowed because no service uses it).
+		await page.goto('/admin/services/categories');
+		await row.getByRole('button', { name: 'Supprimer' }).click();
+		await expect.poll(() => categoryExists(renamed), { timeout: 10_000 }).toBe(false);
+	});
+});
+
+test.describe('Admin · responsive layout', () => {
+	test('on mobile the burger menu opens and navigates between sections', async ({ page }) => {
+		await page.setViewportSize({ width: 414, height: 850 });
+		await page.goto('/admin');
+
+		// The desktop sidebar is hidden; the burger toggle is shown instead.
+		await expect(page.locator('aside')).toBeHidden();
+		const burger = page.getByRole('button', { name: 'Ouvrir le menu' });
+		await expect(burger).toBeVisible();
+
+		// Open the drawer and navigate to a section. Retried in case the click
+		// lands before hydration attaches the toggle handler.
+		const reservationsLink = page.getByRole('link', { name: 'Réservations' });
+		await expect(async () => {
+			if (!(await reservationsLink.isVisible())) await burger.click();
+			await expect(reservationsLink).toBeVisible({ timeout: 1000 });
+		}).toPass({ timeout: 15_000 });
+		await reservationsLink.click();
+		await expect(page).toHaveURL(/\/admin\/reservations/);
+		await expect(page.getByRole('heading', { name: 'Réservations' })).toBeVisible();
 	});
 });
 
 test.describe('Admin · disponibilités', () => {
 	test('admin can update bed capacity', async ({ page }) => {
+		setBeds(3); // known starting point ≠ the value we set through the UI
 		await page.goto('/admin/disponibilites');
 		const capacity = page.locator('section').filter({ hasText: 'Capacité' });
 
-		await capacity.locator('#total-beds').fill('4');
-		await capacity.getByRole('button', { name: 'Sauvegarder' }).click();
-		await page.waitForLoadState('networkidle');
+		// Hydration can reset a too-early fill back to the server value, so retry
+		// the fill+submit until the DB (source of truth) holds the new capacity.
+		await expect(async () => {
+			await capacity.locator('#total-beds').fill('4');
+			await capacity.getByRole('button', { name: 'Sauvegarder' }).click();
+			await expect.poll(() => getBeds(), { timeout: 3000 }).toBe(4);
+		}).toPass({ timeout: 15_000 });
 
-		// Re-load fresh and confirm the new capacity was persisted.
+		// Re-load fresh and confirm the persisted capacity is rendered.
 		await page.goto('/admin/disponibilites');
 		await expect(page.locator('#total-beds')).toHaveValue('4');
 	});
@@ -149,7 +225,59 @@ test.describe('Admin · disponibilités', () => {
 });
 
 test.describe('Admin · réservations', () => {
+	test('calendar shows day occupancy and the day list shows the chosen option', async ({ page }) => {
+		resetAvailabilityToSeed();
+		setBeds(3);
+		clearBookings();
+
+		const formuleId = serviceIdBySlug('massage-personnalise');
+		const date = ymd(nextWeekday(2));
+		removeClosure(date);
+		seedBooking({
+			serviceId: formuleId,
+			date,
+			startTime: '10:00',
+			endTime: '11:00',
+			status: 'confirmed',
+			guestName: 'Option Vue',
+			guestEmail: 'optionvue@test.local',
+			option: 'Aromathérapie',
+		});
+
+		await page.goto('/admin/reservations');
+
+		// The day cell reports partial occupancy (1 active booking, beds free).
+		const cell = page.locator(`button[data-date="${date}"]:visible`).first();
+		await expect(cell).toContainText('1 rés.');
+
+		// The nearest day with bookings is selected by default — its list shows
+		// the service and the option chip picked at booking time.
+		await expect(page.locator('tr', { hasText: 'Option Vue' })).toBeVisible();
+		await expect(page.getByText('Massage Personnalisé')).toBeVisible();
+		await expect(page.getByText('Aromathérapie', { exact: true })).toBeVisible();
+	});
+
+	test('a day with no remaining capacity is marked Complet', async ({ page }) => {
+		resetAvailabilityToSeed();
+		setBeds(1);
+		clearBookings();
+
+		const reflexId = serviceIdBySlug('reflexologie');
+		const date = ymd(nextWeekday(2));
+		removeClosure(date);
+		// One booking covering the whole working day on the only bed.
+		seedBooking({ serviceId: reflexId, date, startTime: '09:00', endTime: '18:00', status: 'confirmed' });
+
+		await page.goto('/admin/reservations');
+		const cell = page.locator(`button[data-date="${date}"]:visible`).first();
+		await expect(cell).toContainText('Complet');
+
+		setBeds(3);
+	});
+
 	test('admin can change a reservation status', async ({ page }) => {
+		resetAvailabilityToSeed();
+		setBeds(3);
 		clearBookings();
 		const reflexId = serviceIdBySlug('reflexologie');
 		const date = ymd(nextWeekday(2));
@@ -163,6 +291,7 @@ test.describe('Admin · réservations', () => {
 			guestEmail: 'statut@test.local',
 		});
 
+		// The day list defaults to the nearest upcoming day with bookings.
 		await page.goto('/admin/reservations');
 		const row = page.locator('tr', { hasText: 'Statut Test' });
 		await expect(row).toBeVisible();

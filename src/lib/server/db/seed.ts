@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { db } from './index';
-import { services, availability, cmsContent, closures, settings, users } from './schema';
+import { services, availability, cmsContent, closures, settings, users, categories } from './schema';
 import { eq } from 'drizzle-orm';
 import { frenchHolidays } from '../availability';
 
@@ -246,6 +246,21 @@ export function seedAdmin() {
 				`Set ADMIN_EMAIL / ADMIN_PASSWORD and change this password immediately.`
 		);
 	}
+}
+
+// Default service categories. Idempotent: only fills an empty table, so
+// admin-managed categories (renames, additions, deletions) are never clobbered.
+export function seedCategories() {
+	const existing = db.select().from(categories).all();
+	if (existing.length > 0) return;
+
+	db.insert(categories).values([
+		{ slug: 'formule', name: 'Nos Formules', sortOrder: 1 },
+		{ slug: 'head-spa', name: 'Head Spa', sortOrder: 2 },
+		{ slug: 'reflexologie', name: 'Réflexologie', sortOrder: 3 },
+		{ slug: 'facial', name: 'Soins du Visage', sortOrder: 4 },
+		{ slug: 'massage', name: 'Massages Corps', sortOrder: 5 },
+	]).run();
 }
 
 // Spa-wide settings. total_beds = how many beds/tables can be in use at once.
