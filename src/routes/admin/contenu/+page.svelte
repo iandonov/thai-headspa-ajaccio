@@ -29,7 +29,7 @@
 	});
 </script>
 
-<svelte:head><title>Contenu CMS — Admin</title></svelte:head>
+<svelte:head><title>Gestion de contenu — Admin</title></svelte:head>
 
 <div class="mb-8">
 	<h1 class="font-serif text-3xl text-(--color-charcoal)">Gestion du Contenu</h1>

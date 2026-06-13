@@ -4,22 +4,6 @@
 
 	const featured = $derived(data.services.filter((s) => s.category !== 'formule').slice(0, 3));
 
-	type Formule = (typeof data.services)[number] & { optionList: string[] };
-	const formules: Formule[] = $derived(
-		data.services
-			.filter((s) => s.category === 'formule')
-			.map((s) => {
-				let optionList: string[] = [];
-				try {
-					optionList = s.options ? JSON.parse(s.options) : [];
-				} catch {
-					optionList = [];
-				}
-				return { ...s, optionList };
-			})
-	);
-
-
 	const testimonials = [
 		{
 			text: "Une expérience absolument merveilleuse. Le head spa m'a complètement transformée, je me sentais légère et apaisée pendant plusieurs jours.",
@@ -84,8 +68,8 @@
 			<a href="/reservation" class="btn-primary !bg-[#c9a96e] hover:!bg-[#a07840] !border-0 px-10 py-4 text-sm">
 				Réserver un Soin
 			</a>
-			<a href="#formules" class="inline-flex items-center gap-2 px-10 py-4 border border-white/40 text-white text-sm tracking-widest uppercase rounded-sm transition-all duration-300 hover:bg-white/10 hover:border-white">
-				Nos Formules
+			<a href="/contact" class="inline-flex items-center gap-2 px-10 py-4 border border-white/40 text-white text-sm tracking-widest uppercase rounded-sm transition-all duration-300 hover:bg-white/10 hover:border-white">
+				Nous Contacter
 			</a>
 		</div>
 	</div>
@@ -196,56 +180,6 @@
 
 		<div class="text-center mt-12">
 			<a href="/services" class="btn-primary">Voir tous nos soins</a>
-		</div>
-	</div>
-</section>
-
-<!-- FORMULES — selectable packages over fixed background -->
-<section id="formules" class="relative bg-fixed-img py-28" style="background-image: linear-gradient(rgba(26,51,41,0.72), rgba(26,51,41,0.78)), url('/images/bg-leaves.jpg');">
-	<div class="max-w-6xl mx-auto px-6">
-		<div class="text-center mb-14">
-			<p class="section-subheading text-(--color-gold)">Nos Formules</p>
-			<h2 class="font-serif text-4xl md:text-5xl text-white leading-tight">{data.cms.formules_title ?? 'Des Formules Personnalisables'}</h2>
-			<div class="flex items-center justify-center gap-4 mt-5 mb-5">
-				<div class="h-px w-16 bg-white/25"></div>
-				<span class="text-(--color-gold)">✦</span>
-				<div class="h-px w-16 bg-white/25"></div>
-			</div>
-			<p class="font-sans text-white/70 max-w-2xl mx-auto leading-relaxed">
-				{data.cms.formules_tagline ?? 'Des formules personnalisables selon vos envies grâce à nos options exclusives.'}
-			</p>
-		</div>
-
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-			{#each formules as f}
-				<!-- Whole card links straight to booking for this formule -->
-				<a
-					href="/reservation?service={f.id}"
-					class="group glass-card text-(--color-charcoal) cursor-pointer text-left rounded-(--radius-card) p-7 flex flex-col transition-all duration-300 hover:-translate-y-1 hover:ring-2 hover:ring-(--color-gold) hover:shadow-[0_16px_56px_rgba(0,0,0,0.28)]"
-				>
-					<div class="flex justify-between items-center mb-3">
-						<span class="font-sans text-xs tracking-widest uppercase text-(--color-gold) bg-(--color-gold)/10 px-3 py-1 rounded-full">
-							{formatDuration(f.duration)}
-						</span>
-						<span class="font-serif text-2xl text-(--color-forest)">{f.price}€</span>
-					</div>
-					<h3 class="font-serif text-xl text-(--color-charcoal) mb-2">{f.name}</h3>
-					<p class="font-sans text-sm text-(--color-stone) leading-relaxed mb-4">{f.description}</p>
-
-					{#if f.optionList.length > 0}
-						<p class="font-sans text-[0.7rem] tracking-widest uppercase text-(--color-gold) mb-2">Options sélectionnées</p>
-						<div class="flex flex-wrap gap-2 mb-4">
-							{#each f.optionList as opt}
-								<span class="font-sans text-xs px-3 py-1.5 rounded-full bg-(--color-cream) border border-(--color-sand) text-(--color-stone)">{opt}</span>
-							{/each}
-						</div>
-					{/if}
-
-					<span class="mt-auto inline-flex items-center justify-center gap-2 w-full py-3 bg-[#2d4a3e] group-hover:bg-[#3d6b5a] text-white font-sans text-xs font-medium tracking-widest uppercase rounded-sm transition-all duration-300">
-						Réserver cette formule →
-					</span>
-				</a>
-			{/each}
 		</div>
 	</div>
 </section>

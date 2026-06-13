@@ -96,21 +96,36 @@
 						</a>
 					</div>
 
-					<!-- Map placeholder -->
-					<div class="glass-card rounded-(--radius-card) p-6 flex-1 flex flex-col items-center justify-center text-center min-h-[200px]">
-						<svg class="w-10 h-10 text-(--color-gold)/60 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-						</svg>
-						<p class="font-sans text-sm text-(--color-stone)">05 rue Comte Bacciochi</p>
-						<p class="font-sans text-sm text-(--color-stone)">20 000 Ajaccio</p>
+					<!-- Map -->
+					<div class="glass-card rounded-(--radius-card) p-6 flex-1 flex flex-col">
 						<a
 							href="https://maps.google.com/?q=05+rue+Comte+Bacciochi+Ajaccio"
 							target="_blank"
 							rel="noopener"
-							class="mt-4 font-sans text-xs text-(--color-gold) hover:underline"
+							class="group block overflow-hidden rounded-(--radius-card) flex-1"
+							aria-label="Ouvrir l'emplacement dans Google Maps"
 						>
-							Ouvrir dans Google Maps →
+							<img
+								src="/images/map.png"
+								alt="Plan d'accès — 05 rue Comte Bacciochi, 20 000 Ajaccio"
+								loading="lazy"
+								class="w-full h-full min-h-[200px] object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+							/>
 						</a>
+						<div class="flex items-center justify-between gap-4 pt-4">
+							<div>
+								<p class="font-sans text-sm text-(--color-stone)">05 rue Comte Bacciochi</p>
+								<p class="font-sans text-sm text-(--color-stone)">20 000 Ajaccio</p>
+							</div>
+							<a
+								href="https://maps.google.com/?q=05+rue+Comte+Bacciochi+Ajaccio"
+								target="_blank"
+								rel="noopener"
+								class="font-sans text-xs text-(--color-gold) hover:underline whitespace-nowrap"
+							>
+								Ouvrir dans Google Maps →
+							</a>
+						</div>
 					</div>
 				</div>
 			</div>

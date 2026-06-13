@@ -12,12 +12,16 @@
 
 	// Options are stored as a JSON array; show one per line for editing.
 	function optionsToText(raw: string | null): string {
-		if (!raw) return '';
+		return optionsToArray(raw).join('\n');
+	}
+
+	function optionsToArray(raw: string | null): string[] {
+		if (!raw) return [];
 		try {
 			const v = JSON.parse(raw);
-			return Array.isArray(v) ? v.join('\n') : '';
+			return Array.isArray(v) ? v.filter((o) => typeof o === 'string') : [];
 		} catch {
-			return '';
+			return [];
 		}
 	}
 
@@ -41,6 +45,13 @@
 	const selectedCatName = $derived(selectedCat ? (categoryName.get(selectedCat) ?? selectedCat) : null);
 
 	let showAdd = $state(false);
+
+	// Only one service panel is expanded at a time; clicking Edit on another
+	// collapses the previous one.
+	let expandedId = $state<number | null>(null);
+	function toggleExpand(id: number) {
+		expandedId = expandedId === id ? null : id;
+	}
 </script>
 
 <svelte:head><title>Soins & Tarifs — Admin</title></svelte:head>
@@ -121,9 +132,10 @@
 	</div>
 	<div class="space-y-4">
 		{#each group.services as service (service.id)}
+			{@const expanded = expandedId === service.id}
 			<div class="bg-white rounded-(--radius-card) border border-(--color-sand)/60 p-6">
-				<div class="flex items-center justify-between mb-4">
-					<div>
+				<div class="flex items-start justify-between gap-4 {expanded ? 'mb-4' : ''}">
+					<div class="min-w-0">
 						<h3 class="font-serif text-xl text-(--color-charcoal)">{service.name}</h3>
 						<span class="font-sans text-xs text-(--color-stone)">
 							{categoryName.get(service.category) ?? service.category} ·
@@ -131,13 +143,37 @@
 							{service.beds} lit{service.beds > 1 ? 's' : ''}
 							{#if service.bufferMinutes > 0}· {service.bufferMinutes} min de préparation{/if}
 						</span>
+						{#if !expanded && service.description}
+							<p class="font-sans text-sm text-(--color-charcoal)/80 mt-2">{service.description}</p>
+						{/if}
+						{#if !expanded}
+							{@const opts = optionsToArray(service.options)}
+							{#if opts.length > 0}
+								<div class="mt-2 flex flex-wrap items-center gap-1.5">
+									<span class="font-sans text-xs uppercase tracking-wider text-(--color-stone)/70">Options&nbsp;:</span>
+									{#each opts as opt (opt)}
+										<span class="font-sans text-xs text-(--color-charcoal)/80 bg-(--color-sand)/40 rounded-sm px-2 py-0.5">{opt}</span>
+									{/each}
+								</div>
+							{/if}
+						{/if}
 					</div>
-					<form method="POST" action="?/delete" use:enhance
-						onsubmit={(e) => { if (!confirm(`Supprimer « ${service.name} » ?`)) e.preventDefault(); }}>
-						<input type="hidden" name="id" value={service.id} />
-						<button type="submit" class="text-xs font-sans text-red-600 hover:text-red-700 hover:underline">Supprimer</button>
-					</form>
+					<div class="flex items-center gap-2 shrink-0">
+						<button type="button" onclick={() => toggleExpand(service.id)}
+							class="text-xs font-sans px-3 py-1.5 rounded-sm border border-(--color-forest)/40 text-(--color-forest) hover:bg-(--color-forest)/5 transition-colors whitespace-nowrap">
+							{expanded ? 'Réduire' : 'Modifier'}
+						</button>
+						<form method="POST" action="?/delete" use:enhance
+							onsubmit={(e) => { if (!confirm(`Supprimer « ${service.name} » ?`)) e.preventDefault(); }}>
+							<input type="hidden" name="id" value={service.id} />
+							<button type="submit" title="Supprimer"
+								class="text-xs font-sans px-3 py-1.5 rounded-sm border border-red-200 text-red-600 hover:bg-red-50 transition-colors whitespace-nowrap">
+								Supprimer
+							</button>
+						</form>
+					</div>
 				</div>
+				{#if expanded}
 				<form method="POST" action="?/update" use:enhance class="grid grid-cols-1 sm:grid-cols-4 gap-4">
 					<input type="hidden" name="id" value={service.id} />
 					<div class="sm:col-span-2">
@@ -190,6 +226,7 @@
 						<button type="submit" class="btn-primary text-xs py-2">Sauvegarder</button>
 					</div>
 				</form>
+				{/if}
 			</div>
 		{/each}
 	</div>

@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { afterNavigate } from '$app/navigation';
 	import { fade, slide } from 'svelte/transition';
 	let { data, children } = $props();
+
+	// The scroll lives inside <main>, not the window, so SvelteKit's scroll
+	// restoration doesn't reset it. Scroll back to top on every navigation.
+	let mainEl = $state<HTMLElement | null>(null);
+	afterNavigate(() => mainEl?.scrollTo({ top: 0 }));
 
 	type NavItem = {
 		href: string;
@@ -27,7 +33,7 @@
 				{ href: '/admin/services/categories', label: 'Catégories' },
 			],
 		},
-		{ href: '/admin/contenu', label: 'Contenu CMS', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
+		{ href: '/admin/contenu', label: 'Gestion de contenu', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
 		{ href: '/admin/disponibilites', label: 'Disponibilités', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
 	]);
 
@@ -193,7 +199,7 @@
 	{/if}
 
 	<!-- Main content -->
-	<main class="flex-1 overflow-auto">
+	<main bind:this={mainEl} class="flex-1 overflow-auto">
 		<div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 lg:py-10 mt-12 lg:mt-0">
 			{@render children()}
 		</div>
