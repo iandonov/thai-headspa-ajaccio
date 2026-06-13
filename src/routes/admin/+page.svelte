@@ -44,7 +44,26 @@
 		<h2 class="font-serif text-xl text-(--color-charcoal)">Dernières Réservations</h2>
 		<a href="/admin/reservations" class="font-sans text-xs text-(--color-gold) hover:underline">Voir tout →</a>
 	</div>
-	<div class="overflow-x-auto">
+	<!-- Mobile: stacked cards (a 5-column table won't fit a phone width) -->
+	<div class="sm:hidden divide-y divide-(--color-sand)/40">
+		{#each data.recentBookings as b}
+			<div class="px-5 py-4">
+				<div class="flex items-start justify-between gap-3">
+					<p class="font-sans text-sm font-medium text-(--color-charcoal)">
+						{b.firstName ? b.firstName + ' ' + b.lastName : b.guestName ?? 'Invité'}
+					</p>
+					<span class="shrink-0 px-2 py-0.5 rounded-full text-xs {statusColor[b.status]}">{statusLabel[b.status]}</span>
+				</div>
+				<p class="font-sans text-sm text-(--color-stone) mt-1">{b.serviceName}</p>
+				<p class="font-sans text-xs text-(--color-stone)/80 mt-1">
+					{new Date(b.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} · {b.startTime}
+				</p>
+			</div>
+		{/each}
+	</div>
+
+	<!-- ≥sm: full table -->
+	<div class="hidden sm:block overflow-x-auto">
 		<table class="w-full">
 			<thead class="bg-(--color-cream)">
 				<tr>

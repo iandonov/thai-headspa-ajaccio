@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { ActionData } from './$types';
-	let { form }: { form: ActionData } = $props();
+	import type { ActionData, PageData } from './$types';
+	let { form, data }: { form: ActionData; data: PageData } = $props();
 </script>
 
 <svelte:head>
@@ -27,6 +27,12 @@
 				{#if form?.error}
 					<div class="bg-red-50 border border-red-200 text-red-700 rounded-sm px-4 py-3 text-sm">
 						{form.error}
+					</div>
+				{/if}
+
+				{#if data.devBypass}
+					<div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-sm px-4 py-3 text-xs">
+						<strong>Mode dev :</strong> n'importe quel email/mot de passe inconnu ouvre l'espace admin.
 					</div>
 				{/if}
 

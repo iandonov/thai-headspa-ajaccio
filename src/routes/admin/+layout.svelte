@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { fade, slide } from 'svelte/transition';
 	let { data, children } = $props();
 
 	type NavItem = {
@@ -57,6 +58,20 @@
 	$effect(() => {
 		$page.url.href;
 		mobileOpen = false;
+	});
+
+	// Soft-dismiss the drawer: Escape, or any scroll (capture phase catches the
+	// scroll inside <main> too). A tap outside is handled by the backdrop below.
+	$effect(() => {
+		if (!mobileOpen) return;
+		const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') mobileOpen = false; };
+		const onScroll = () => { mobileOpen = false; };
+		window.addEventListener('keydown', onKey);
+		window.addEventListener('scroll', onScroll, { capture: true, passive: true });
+		return () => {
+			window.removeEventListener('keydown', onKey);
+			window.removeEventListener('scroll', onScroll, { capture: true });
+		};
 	});
 </script>
 
@@ -131,7 +146,7 @@
 			</button>
 		</div>
 		{#if mobileOpen}
-			<nav class="px-4 pb-4 space-y-1 border-t border-white/10 pt-2 max-h-[70vh] overflow-y-auto">
+			<nav transition:slide={{ duration: 220 }} class="px-4 pb-4 space-y-1 border-t border-white/10 pt-2 max-h-[70vh] overflow-y-auto">
 				{#each navItems as item}
 					<a
 						href={item.href}
@@ -164,6 +179,18 @@
 			</nav>
 		{/if}
 	</div>
+
+	<!-- Click-away backdrop: below the top bar (z-40) so the bar and drawer stay
+	     interactive; tapping the page softly dismisses the drawer. -->
+	{#if mobileOpen}
+		<button
+			type="button"
+			transition:fade={{ duration: 200 }}
+			onclick={() => (mobileOpen = false)}
+			aria-label="Fermer le menu"
+			class="lg:hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]"
+		></button>
+	{/if}
 
 	<!-- Main content -->
 	<main class="flex-1 overflow-auto">

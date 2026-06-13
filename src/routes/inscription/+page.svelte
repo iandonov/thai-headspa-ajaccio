@@ -27,7 +27,7 @@
 					</div>
 				{/if}
 
-				<div class="grid grid-cols-2 gap-4">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<div>
 						<label for="firstName" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Prénom *</label>
 						<input id="firstName" type="text" name="firstName" required class="input-field" placeholder="Marie" />

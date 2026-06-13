@@ -40,15 +40,15 @@ setup('create accounts and authenticate', async ({ browser }) => {
 
 	mkdirSync(dirname(ADMIN_STATE), { recursive: true });
 
-	// Admin → /admin dashboard.
+	// Admin → /admin/reservations (admin landing).
 	const adminCtx = await browser.newContext();
 	const adminPage = await adminCtx.newPage();
 	await adminPage.goto('/connexion');
 	await adminPage.locator('#email').fill(ADMIN.email);
 	await adminPage.locator('#password').fill(ADMIN.password);
 	await adminPage.getByRole('button', { name: 'Se connecter' }).click();
-	await adminPage.waitForURL('**/admin');
-	await expect(adminPage.getByRole('heading', { name: 'Tableau de bord' })).toBeVisible();
+	await adminPage.waitForURL('**/admin/reservations');
+	await expect(adminPage.getByRole('heading', { name: 'Réservations' })).toBeVisible();
 	await adminCtx.storageState({ path: ADMIN_STATE });
 	await adminCtx.close();
 

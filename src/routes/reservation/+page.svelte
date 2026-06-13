@@ -122,7 +122,21 @@
 	});
 
 	const monthKeys = $derived(Object.keys(months));
-	let monthIndex = $state(0); // index of the first of the two visible months
+	let monthIndex = $state(0); // index of the first visible month
+
+	// Show two months side by side when there's room, one when there isn't.
+	let monthsPerView = $state(1);
+	$effect(() => {
+		const mq = window.matchMedia('(min-width: 640px)');
+		const sync = () => {
+			monthsPerView = mq.matches ? 2 : 1;
+			// Keep the window in bounds when the view widens/narrows.
+			monthIndex = Math.min(monthIndex, Math.max(0, monthKeys.length - monthsPerView));
+		};
+		sync();
+		mq.addEventListener('change', sync);
+		return () => mq.removeEventListener('change', sync);
+	});
 
 	// Blank cells before day 1 so the month aligns to a Monday-first week
 	// (Mon=0 … Sun=6). Built from local Y/M to avoid UTC parsing drift.
@@ -153,6 +167,21 @@
 		selectedDate = date;
 		selectedSlot = '';
 		fetchSlots();
+	}
+
+	// Change step and bring the wizard back into view — otherwise the new
+	// step renders with the page still scrolled to wherever it was.
+	function goToStep(n: number) {
+		step = n;
+		if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+	}
+
+	// Step 1 has no "next" button: picking a service advances immediately.
+	// Options default to all-selected and stay editable on step 2.
+	function selectService(service: (typeof data.services)[number]) {
+		selectedServiceId = service.id;
+		selectedOptions = parseOptions(service.options);
+		goToStep(2);
 	}
 
 	function formatDuration(min: number) {
@@ -220,7 +249,7 @@
 
 		<!-- STEP 1: Choose service -->
 		{#if step === 1}
-				<div class="glass-panel rounded-(--radius-card) p-8">
+				<div class="glass-panel rounded-(--radius-card) p-6 sm:p-8">
 					<h2 class="font-serif text-2xl text-(--color-charcoal) mb-6">Choisissez votre soin</h2>
 
 					{#each groupedServices as [cat, services]}
@@ -232,14 +261,12 @@
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								{#each services as service}
 									{@const serviceOpts = parseOptions(service.options)}
-									{@const isSelected = selectedServiceId === service.id}
-									<!-- div (not button) so the option chips inside can be real buttons -->
-									<div
-										role="button"
-										tabindex="0"
-										onclick={() => { if (selectedServiceId !== service.id) selectedOptions = serviceOpts; selectedServiceId = service.id; }}
-										onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (selectedServiceId !== service.id) selectedOptions = serviceOpts; selectedServiceId = service.id; } }}
-										class="text-left p-5 rounded-sm border-2 transition-all duration-200 flex flex-col cursor-pointer {isSelected ? 'border-(--color-forest) bg-(--color-forest)/5' : 'border-(--color-sand) hover:border-(--color-forest)/40'}"
+									<!-- Picking a service advances straight to the date step;
+									     options are previewed here and editable on step 2. -->
+									<button
+										type="button"
+										onclick={() => selectService(service)}
+										class="text-left p-5 rounded-sm border-2 border-(--color-sand) hover:border-(--color-forest)/40 hover:bg-(--color-forest)/5 transition-all duration-200 flex flex-col cursor-pointer"
 									>
 										<div class="flex justify-between items-start mb-2">
 											<span class="font-sans text-xs tracking-widest uppercase text-(--color-gold)">{formatDuration(service.duration)}</span>
@@ -252,72 +279,45 @@
 												<p class="font-sans text-[0.65rem] tracking-widest uppercase text-(--color-gold)/80 mb-1.5">Options au choix</p>
 												<div class="flex flex-wrap gap-1.5">
 													{#each serviceOpts as opt}
-														<!-- Unselected cards preview the default: all options selected. -->
-														{@const optSelected = isSelected ? selectedOptions.includes(opt) : true}
-														<button
-															type="button"
-															aria-pressed={optSelected}
-															onclick={(e) => {
-																e.stopPropagation();
-																if (selectedServiceId !== service.id) { selectedServiceId = service.id; selectedOptions = serviceOpts; }
-																else toggleOption(opt);
-															}}
-															class="font-sans text-xs px-2.5 py-1 rounded-full border transition-all duration-150
-																{optSelected
-																	? 'bg-(--color-cream) border-(--color-sand) text-(--color-charcoal)'
-																	: 'bg-transparent border-transparent text-(--color-stone) hover:border-(--color-sand)'}"
-														>
-															{opt}
-														</button>
+														<span class="font-sans text-xs text-left leading-snug px-3 py-1.5 rounded-lg border bg-(--color-cream) border-(--color-sand) text-(--color-charcoal)">{opt}</span>
 													{/each}
 												</div>
 											</div>
 										{/if}
-										{#if isSelected}
-											<div class="mt-3 pt-3 border-t border-(--color-forest)/15 flex items-center gap-2 text-(--color-forest)">
-												<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-													<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-												</svg>
-												<span class="font-sans text-xs">Sélectionné{selectedOptions.length ? ` · ${selectedOptions.join(', ')}` : ''}</span>
-											</div>
-										{/if}
-									</div>
+									</button>
 								{/each}
 							</div>
 						</div>
 					{/each}
-
-					<div class="flex justify-end mt-8">
-						<button
-							type="button"
-							onclick={() => { if (selectedServiceId) step = 2; }}
-							disabled={!selectedServiceId}
-							class="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
-						>
-							Choisir un créneau →
-						</button>
-					</div>
 				</div>
 			{/if}
 
 			<!-- STEP 2: Date + Slot -->
 			{#if step === 2}
-				<div class="glass-panel rounded-(--radius-card) p-8">
+				<div class="glass-panel rounded-(--radius-card) p-6 sm:p-8">
 					<!-- Selected service recap -->
 					{#if selectedService}
-						<div class="flex items-center gap-4 p-4 bg-(--color-forest)/5 rounded-sm border border-(--color-forest)/20 mb-8">
+						<div class="flex items-start gap-4 p-4 bg-(--color-forest)/5 rounded-sm border border-(--color-forest)/20 mb-8">
 							<div class="flex-1">
 								<p class="font-serif text-base text-(--color-charcoal)">{selectedService.name}</p>
 								<p class="font-sans text-xs text-(--color-stone)">{formatDuration(selectedService.duration)} · {selectedService.price}€</p>
 								{#if serviceOptions.length > 0}
-									<div class="flex flex-wrap gap-1.5 mt-2">
+									<p class="font-sans text-[0.65rem] tracking-widest uppercase text-(--color-gold)/80 mt-3 mb-1.5">Options au choix</p>
+									<div class="flex flex-col gap-2">
 										{#each serviceOptions as opt}
-											<button type="button" aria-pressed={selectedOptions.includes(opt)} onclick={() => toggleOption(opt)}
-												class="font-sans text-[0.7rem] px-2 py-0.5 rounded-full border transition-all duration-150
-													{selectedOptions.includes(opt)
-														? 'bg-(--color-cream) border-(--color-sand) text-(--color-charcoal)'
-														: 'bg-transparent border-transparent text-(--color-stone) hover:border-(--color-sand)'}">
-												{opt}
+											{@const on = selectedOptions.includes(opt)}
+											<button type="button" aria-pressed={on} onclick={() => toggleOption(opt)}
+												class="flex items-center gap-2.5 text-left font-sans text-xs leading-snug px-3 py-2 rounded-lg border transition-all duration-150
+													{on
+														? 'bg-white border-(--color-forest)/30 text-(--color-charcoal)'
+														: 'bg-transparent border-(--color-sand) text-(--color-stone) hover:border-(--color-forest)/40'}">
+												<span class="shrink-0 w-4 h-4 rounded-md border flex items-center justify-center transition-colors
+													{on ? 'bg-(--color-forest) border-(--color-forest) text-white' : 'border-(--color-stone)/40'}">
+													{#if on}
+														<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+													{/if}
+												</span>
+												<span>{opt}</span>
 											</button>
 										{/each}
 									</div>
@@ -358,23 +358,23 @@
 						</div>
 					{/snippet}
 
-					<!-- Calendar: two months at a time -->
-					<div class="max-w-xl mx-auto mb-8 bg-white rounded-(--radius-card) border border-(--color-sand) p-5">
+					<!-- Calendar: two months side by side when there's room, one otherwise -->
+					<div class="mx-auto mb-8 bg-white rounded-(--radius-card) border border-(--color-sand) p-5 {monthsPerView === 2 ? 'max-w-xl' : 'max-w-sm'}">
 						<div class="flex items-center justify-between mb-2">
 							<button
 								type="button"
 								onclick={() => { if (monthIndex > 0) monthIndex--; }}
 								disabled={monthIndex === 0}
-								aria-label="Mois précédents"
+								aria-label="Mois précédent{monthsPerView === 2 ? 's' : ''}"
 								class="w-8 h-8 flex items-center justify-center rounded-full text-(--color-forest) hover:bg-(--color-forest)/10 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
 							>
 								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
 							</button>
 							<button
 								type="button"
-								onclick={() => { if (monthIndex < monthKeys.length - 2) monthIndex++; }}
-								disabled={monthIndex >= monthKeys.length - 2}
-								aria-label="Mois suivants"
+								onclick={() => { if (monthIndex < monthKeys.length - monthsPerView) monthIndex++; }}
+								disabled={monthIndex >= monthKeys.length - monthsPerView}
+								aria-label="Mois suivant{monthsPerView === 2 ? 's' : ''}"
 								class="w-8 h-8 flex items-center justify-center rounded-full text-(--color-forest) hover:bg-(--color-forest)/10 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
 							>
 								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
@@ -382,7 +382,7 @@
 						</div>
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
 							{#if monthKeys[monthIndex]}{@render monthPanel(monthKeys[monthIndex])}{/if}
-							{#if monthKeys[monthIndex + 1]}{@render monthPanel(monthKeys[monthIndex + 1])}{/if}
+							{#if monthsPerView === 2 && monthKeys[monthIndex + 1]}{@render monthPanel(monthKeys[monthIndex + 1])}{/if}
 						</div>
 					</div>
 
@@ -428,10 +428,10 @@
 					{/if}
 
 					<div class="flex justify-between mt-8">
-						<button type="button" onclick={() => step = 1} class="btn-ghost">← Retour</button>
+						<button type="button" onclick={() => goToStep(1)} class="btn-ghost">← Retour</button>
 						<button
 							type="button"
-							onclick={() => { if (selectedDate && selectedSlot) step = 3; }}
+							onclick={() => { if (selectedDate && selectedSlot) goToStep(3); }}
 							disabled={!selectedDate || !selectedSlot}
 							class="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
 						>
@@ -443,7 +443,7 @@
 
 			<!-- STEP 3: Details + Confirm -->
 			{#if step === 3}
-				<div class="glass-panel rounded-(--radius-card) p-8">
+				<div class="glass-panel rounded-(--radius-card) p-6 sm:p-8">
 					<!-- Recap -->
 					<div class="bg-(--color-cream) rounded-sm border border-(--color-sand) p-5 mb-8">
 						<p class="font-sans text-xs tracking-widest uppercase text-(--color-gold) mb-3">Récapitulatif</p>
@@ -533,7 +533,7 @@
 						{:else if authMode === 'register'}
 							<!-- Inline account creation -->
 							<form method="POST" action="?/register" use:enhance={handleAuth} class="space-y-4 mb-6">
-								<div class="grid grid-cols-2 gap-4">
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 									<div>
 										<label for="reg-firstName" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Prénom *</label>
 										<input id="reg-firstName" name="firstName" type="text" required class="input-field" placeholder="Marie" />
@@ -543,7 +543,7 @@
 										<input id="reg-lastName" name="lastName" type="text" required class="input-field" placeholder="Dupont" />
 									</div>
 								</div>
-								<div class="grid grid-cols-2 gap-4">
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 									<div>
 										<label for="reg-email" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Email *</label>
 										<input id="reg-email" name="email" type="email" required autocomplete="email" class="input-field" placeholder="votre@email.fr" />
@@ -568,7 +568,7 @@
 					<form method="POST" action="?/book">
 						{#if !data.user && authMode === 'guest'}
 							<div class="space-y-4 mb-6">
-								<div class="grid grid-cols-2 gap-4">
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 									<div>
 										<label for="guest-name" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Nom complet *</label>
 										<input id="guest-name" name="guestName" type="text" required class="input-field" placeholder="Marie Dupont" />
@@ -597,14 +597,14 @@
 							<input type="hidden" name="option" value={selectedOptions.join(', ')} />
 
 							<div class="flex justify-between mt-8">
-								<button type="button" onclick={() => step = 2} class="btn-ghost">← Retour</button>
+								<button type="button" onclick={() => goToStep(2)} class="btn-ghost">← Retour</button>
 								<button type="submit" class="btn-primary bg-(--color-gold) hover:bg-(--color-gold-dark) !border-0">
 									Confirmer la réservation
 								</button>
 							</div>
 						{:else}
 							<div class="flex justify-start mt-8">
-								<button type="button" onclick={() => step = 2} class="btn-ghost">← Retour</button>
+								<button type="button" onclick={() => goToStep(2)} class="btn-ghost">← Retour</button>
 							</div>
 						{/if}
 					</form>

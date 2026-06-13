@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/stores';
+	import { fade, slide } from 'svelte/transition';
 
 	let { data, children } = $props();
 
@@ -11,6 +12,20 @@
 		const handler = () => { scrolled = window.scrollY > 50; };
 		window.addEventListener('scroll', handler, { passive: true });
 		return () => window.removeEventListener('scroll', handler);
+	});
+
+	// Soft-dismiss the mobile menu: Escape key or any scroll closes it (a tap
+	// outside is handled by the backdrop overlay below).
+	$effect(() => {
+		if (!mobileOpen) return;
+		const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') mobileOpen = false; };
+		const onScroll = () => { mobileOpen = false; };
+		window.addEventListener('keydown', onKey);
+		window.addEventListener('scroll', onScroll, { passive: true });
+		return () => {
+			window.removeEventListener('keydown', onKey);
+			window.removeEventListener('scroll', onScroll);
+		};
 	});
 
 	const navLinks = [
@@ -90,7 +105,7 @@
 
 		<!-- Mobile Menu -->
 		{#if mobileOpen}
-			<div class="lg:hidden bg-white/98 backdrop-blur-md border-t border-(--color-sand) px-6 py-6 flex flex-col gap-4">
+			<div transition:slide={{ duration: 220 }} class="lg:hidden bg-white/98 backdrop-blur-md border-t border-(--color-sand) px-6 py-6 flex flex-col gap-4">
 				{#each navLinks as link}
 					<a
 						href={link.href}
@@ -112,6 +127,18 @@
 			</div>
 		{/if}
 	</header>
+
+	<!-- Click-away backdrop: sits below the header (z-40) so the bar and menu
+	     stay interactive; tapping anywhere else softly dismisses the menu. -->
+	{#if mobileOpen}
+		<button
+			type="button"
+			transition:fade={{ duration: 200 }}
+			onclick={() => mobileOpen = false}
+			aria-label="Fermer le menu"
+			class="lg:hidden fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px]"
+		></button>
+	{/if}
 	{/if}
 
 	<!-- Page Content -->

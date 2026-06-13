@@ -16,14 +16,14 @@ test('a visitor can register a new account', async ({ page }) => {
 	await expect(page).toHaveURL(/\/compte/);
 });
 
-test('admin can log in and reach the dashboard', async ({ page }) => {
+test('admin can log in and reach the admin area', async ({ page }) => {
 	await page.goto('/connexion');
 	await page.locator('#email').fill(ADMIN.email);
 	await page.locator('#password').fill(ADMIN.password);
 	await page.getByRole('button', { name: 'Se connecter' }).click();
 
-	await expect(page).toHaveURL(/\/admin/);
-	await expect(page.getByRole('heading', { name: 'Tableau de bord' })).toBeVisible();
+	await expect(page).toHaveURL(/\/admin\/reservations/);
+	await expect(page.getByRole('heading', { name: 'Réservations' })).toBeVisible();
 });
 
 test('login rejects bad credentials', async ({ page }) => {

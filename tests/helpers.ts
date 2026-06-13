@@ -218,18 +218,17 @@ export function resetAvailabilityToSeed() {
 
 // --- Shared booking-flow UI helpers ------------------------------------------
 
-// Step 1: select a service by its visible name and advance to the date step.
-// Retries the (client-side) selection until "next" enables, in case the first
-// click lands before Svelte hydration. The card is a div[role="button"] (so its
-// option chips can be real buttons inside it).
+// Step 1: select a service by its visible name. Each service card is a button
+// that jumps straight to the date step (no separate "next" button); its options
+// are preselected and stay editable in the step-2 recap. Retried in case the
+// first click lands before Svelte hydration wires up the handler.
 export async function selectServiceAndContinue(page: Page, serviceName: string) {
-	const serviceBtn = page.locator('button, [role="button"]').filter({ hasText: serviceName }).first();
-	const nextBtn = page.getByRole('button', { name: /Choisir un créneau/ });
+	const serviceBtn = page.locator('.glass-panel button').filter({ hasText: serviceName }).first();
+	const dateHeading = page.getByRole('heading', { name: 'Choisissez une date' });
 	await expect(async () => {
 		await serviceBtn.click();
-		await expect(nextBtn).toBeEnabled({ timeout: 1000 });
+		await expect(dateHeading).toBeVisible({ timeout: 1000 });
 	}).toPass({ timeout: 15_000 });
-	await nextBtn.click();
 }
 
 // Step 2: walk the calendar's selectable days until one returns bookable time
