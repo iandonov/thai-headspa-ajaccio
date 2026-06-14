@@ -32,7 +32,6 @@
 		{ href: '/', label: 'Accueil' },
 		{ href: '/services', label: 'Soins & Massages' },
 		{ href: '/about', label: 'À Propos' },
-		{ href: '/reservation', label: 'Réservation' },
 		{ href: '/contact', label: 'Contact' },
 	];
 
@@ -86,7 +85,7 @@
 						Connexion
 					</a>
 				{/if}
-				<a href="/reservation" class="btn-primary text-xs py-2.5 px-6">
+				<a href="/services" class="btn-primary text-xs py-2.5 px-6">
 					Réserver
 				</a>
 			</div>
@@ -158,7 +157,7 @@
 					<p class="text-sm leading-relaxed text-white/60 mb-6">
 						L'art ancestral du soin thaïlandais au cœur de la Corse.
 					</p>
-					<a href="/reservation" class="btn-outline border-white/40 text-white/80 hover:bg-white/10 hover:border-white text-xs py-2 px-5">
+					<a href="/services" class="btn-outline border-white/40 text-white/80 hover:bg-white/10 hover:border-white text-xs py-2 px-5">
 						Prendre Rendez-vous
 					</a>
 				</div>
@@ -198,7 +197,7 @@
 			<div class="border-t border-white/10 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
 				<p class="text-xs text-white/30">© 2024 Thai Head Spa Ajaccio. Tous droits réservés.</p>
 				<div class="flex gap-6">
-					<a href="/mentions-legales" class="text-xs text-white/30 hover:text-white/60 transition-colors">Mentions légales</a>
+					<a href="/mentions-legales" class="hidden text-xs text-white/30 hover:text-white/60 transition-colors">Mentions légales</a>
 					<a href="/politique-confidentialite" class="text-xs text-white/30 hover:text-white/60 transition-colors">Confidentialité</a>
 				</div>
 			</div>

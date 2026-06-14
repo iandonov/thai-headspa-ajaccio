@@ -73,7 +73,29 @@
 	<div class="lg:col-span-2">
 		<h2 class="font-serif text-xl text-(--color-charcoal) mb-3">Historique des réservations</h2>
 		<div class="bg-white rounded-(--radius-card) border border-(--color-sand)/60 overflow-hidden">
-			<div class="overflow-x-auto">
+			<!-- Mobile: one stacked card per booking (the table is too wide for a phone) -->
+			<div class="md:hidden divide-y divide-(--color-sand)/40">
+				{#each data.history as b (b.id)}
+					<div class="p-4">
+						<div class="flex items-start justify-between gap-3">
+							<p class="font-sans text-sm font-medium text-(--color-charcoal)">{b.serviceName ?? '—'}</p>
+							<span class="px-2 py-0.5 rounded-full text-xs border shrink-0 {statusColor[b.status]}">{statusLabel[b.status]}</span>
+						</div>
+						{#if b.option}
+							<p class="font-sans text-xs text-(--color-stone) mt-1">{b.option}</p>
+						{/if}
+						<div class="flex items-center justify-between gap-3 mt-2">
+							<p class="font-sans text-xs text-(--color-stone)">{fmtDate(b.date)} · {b.startTime}</p>
+							<span class="font-serif text-base text-(--color-gold)">{b.servicePrice ?? 0}€</span>
+						</div>
+					</div>
+				{:else}
+					<p class="px-4 py-10 text-center font-sans text-sm text-(--color-stone)">Aucune réservation pour ce client</p>
+				{/each}
+			</div>
+
+			<!-- Desktop: full table -->
+			<div class="hidden md:block overflow-x-auto">
 				<table class="w-full">
 					<thead class="bg-(--color-cream)">
 						<tr>

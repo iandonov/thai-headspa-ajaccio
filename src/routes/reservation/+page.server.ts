@@ -23,11 +23,18 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const preselectedId = url.searchParams.get('service');
 	const preselectedOptions = url.searchParams.getAll('option').filter(Boolean);
 
+	// The wizard now starts at the date step — a soin must already be chosen on
+	// the /services page. Without a valid active service, send the visitor there.
+	const serviceId = preselectedId ? Number(preselectedId) : null;
+	if (!serviceId || !allServices.some((s) => s.id === serviceId)) {
+		redirect(302, '/services');
+	}
+
 	return {
 		services: allServices,
 		categories: db.select().from(categories).orderBy(categories.sortOrder).all(),
 		user: locals.user,
-		preselectedServiceId: preselectedId ? Number(preselectedId) : null,
+		preselectedServiceId: serviceId,
 		preselectedOptions,
 	};
 };

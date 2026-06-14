@@ -65,7 +65,7 @@
 			{data.cms.hero_tagline ?? "Découvrez l'art ancestral du soin capillaire thaïlandais au cœur d'Ajaccio"}
 		</p>
 		<div class="flex flex-col sm:flex-row gap-4 justify-center">
-			<a href="/reservation" class="btn-primary !bg-[#c9a96e] hover:!bg-[#a07840] !border-0 px-10 py-4 text-sm">
+			<a href="/services" class="btn-primary !bg-[#c9a96e] hover:!bg-[#a07840] !border-0 px-10 py-4 text-sm">
 				Réserver un Soin
 			</a>
 			<a href="/contact" class="inline-flex items-center gap-2 px-10 py-4 border border-white/40 text-white text-sm tracking-widest uppercase rounded-sm transition-all duration-300 hover:bg-white/10 hover:border-white">
@@ -116,7 +116,7 @@
 					{/each}
 					<div class="mt-8 flex flex-wrap gap-4">
 						<a href="/about" class="btn-outline">En savoir plus</a>
-						<a href="/reservation" class="btn-ghost">Réserver →</a>
+						<a href="/services" class="btn-ghost">Réserver →</a>
 					</div>
 				</div>
 				<div class="lg:col-span-2 hidden lg:block">
@@ -193,7 +193,7 @@
 		<p class="font-sans text-white/75 mb-10 max-w-lg mx-auto leading-relaxed">
 			Réservez votre soin en ligne en quelques clics. Nous vous confirmons votre rendez-vous dans les plus brefs délais.
 		</p>
-		<a href="/reservation" class="inline-flex items-center gap-2 px-12 py-4 bg-(--color-gold) hover:bg-(--color-gold-dark) text-white font-sans text-sm tracking-widest uppercase rounded-sm transition-all duration-300 hover:shadow-lg">
+		<a href="/services" class="inline-flex items-center gap-2 px-12 py-4 bg-(--color-gold) hover:bg-(--color-gold-dark) text-white font-sans text-sm tracking-widest uppercase rounded-sm transition-all duration-300 hover:shadow-lg">
 			Prendre Rendez-vous
 		</a>
 	</div>

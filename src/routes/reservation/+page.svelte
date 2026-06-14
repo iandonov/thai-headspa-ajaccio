@@ -6,8 +6,9 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	// These capture the load-time preselection once; untrack makes the intentional
-	// one-time read of the reactive `data` prop explicit (and silences the warning).
+	// The soin is always chosen on /services before reaching this page; capture
+	// that preselection once. untrack makes the intentional one-time read of the
+	// reactive `data` prop explicit (and silences the warning).
 	let selectedServiceId = $state(untrack(() => data.preselectedServiceId ?? null));
 	// All options start selected; URL params (from the services page) narrow them down.
 	let selectedOptions = $state<string[]>(untrack(() => {
@@ -19,11 +20,10 @@
 	let selectedSlot = $state('');
 	let loadingSlots = $state(false);
 	let slots = $state<{ time: string; available: boolean }[]>([]);
-	// Start at the date step when a service was preselected (e.g. via a formule link).
-	let step = $state(untrack(() => (data.preselectedServiceId ? 2 : 1))); // 1: service, 2: date/slot, 3: details
+	let step = $state(1); // 1: date/slot, 2: details
 
 	// Step 3 identity: how the visitor wants to provide their details.
-	let authMode = $state<'guest' | 'login' | 'register'>('guest');
+	let authMode = $state<'guest' | 'login' | 'register'>('register');
 	let authError = $state('');
 	let authLoading = $state(false);
 
@@ -65,22 +65,6 @@
 			? selectedOptions.filter((o) => o !== opt)
 			: [...selectedOptions, opt];
 	}
-
-	// Group services by category for step 1; categories come from the DB.
-	const categoryLabels = $derived(
-		Object.fromEntries(data.categories.map((c) => [c.slug, c.name])) as Record<string, string>
-	);
-	const groupedServices = $derived.by(() => {
-		const grouped = data.services.reduce((acc, s) => {
-			(acc[s.category] ??= []).push(s);
-			return acc;
-		}, {} as Record<string, typeof data.services>);
-		const ordered = [
-			...data.categories.map((c) => c.slug).filter((c) => grouped[c]),
-			...Object.keys(grouped).filter((c) => !(c in categoryLabels)),
-		];
-		return ordered.map((c) => [c, grouped[c]] as const);
-	});
 
 	// Compute min date (tomorrow), using local components to avoid UTC drift.
 	const today = new Date();
@@ -176,14 +160,6 @@
 		if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
 	}
 
-	// Step 1 has no "next" button: picking a service advances immediately.
-	// Options default to all-selected and stay editable on step 2.
-	function selectService(service: (typeof data.services)[number]) {
-		selectedServiceId = service.id;
-		selectedOptions = parseOptions(service.options);
-		goToStep(2);
-	}
-
 	function formatDuration(min: number) {
 		if (min < 60) return min + ' min';
 		if (min === 60) return '1h';
@@ -216,9 +192,8 @@
 		<!-- Progress Steps -->
 		<div class="flex items-center justify-center pb-7 mb-8">
 			{#each [
-				{ n: 1, label: 'Soin' },
-				{ n: 2, label: 'Créneau' },
-				{ n: 3, label: 'Coordonnées' },
+				{ n: 1, label: 'Créneau' },
+				{ n: 2, label: 'Coordonnées' },
 			] as s}
 				<!-- Circle column is fixed width (label is absolute) so the
 				     connector lines between circles are equally distributed. -->
@@ -235,7 +210,7 @@
 					</div>
 					<span class="absolute top-full mt-2 whitespace-nowrap font-sans text-xs {step >= s.n ? 'text-white' : 'text-white/50'}">{s.label}</span>
 				</div>
-				{#if s.n < 3}
+				{#if s.n < 2}
 					<div class="w-16 h-px mx-3 {step > s.n ? 'bg-(--color-gold)' : 'bg-white/30'}"></div>
 				{/if}
 			{/each}
@@ -247,53 +222,8 @@
 			</div>
 		{/if}
 
-		<!-- STEP 1: Choose service -->
-		{#if step === 1}
-				<div class="glass-panel rounded-(--radius-card) p-6 sm:p-8">
-					<h2 class="font-serif text-2xl text-(--color-charcoal) mb-6">Choisissez votre soin</h2>
-
-					{#each groupedServices as [cat, services]}
-						<div class="mb-8 last:mb-0">
-							<div class="flex items-center gap-3 mb-4">
-								<h3 class="font-sans text-xs tracking-[0.25em] uppercase text-(--color-gold)">{categoryLabels[cat] ?? cat}</h3>
-								<div class="flex-1 h-px bg-(--color-sand)"></div>
-							</div>
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-								{#each services as service}
-									{@const serviceOpts = parseOptions(service.options)}
-									<!-- Picking a service advances straight to the date step;
-									     options are previewed here and editable on step 2. -->
-									<button
-										type="button"
-										onclick={() => selectService(service)}
-										class="text-left p-5 rounded-sm border-2 border-(--color-sand) hover:border-(--color-forest)/40 hover:bg-(--color-forest)/5 transition-all duration-200 flex flex-col cursor-pointer"
-									>
-										<div class="flex justify-between items-start mb-2">
-											<span class="font-sans text-xs tracking-widest uppercase text-(--color-gold)">{formatDuration(service.duration)}</span>
-											<span class="font-serif text-xl text-(--color-forest)">{service.price}€</span>
-										</div>
-										<p class="font-serif text-base text-(--color-charcoal)">{service.name}</p>
-										<p class="font-sans text-xs text-(--color-stone) mt-1 leading-relaxed">{service.description}</p>
-										{#if serviceOpts.length > 0}
-											<div class="mt-3">
-												<p class="font-sans text-[0.65rem] tracking-widest uppercase text-(--color-gold)/80 mb-1.5">Options au choix</p>
-												<div class="flex flex-wrap gap-1.5">
-													{#each serviceOpts as opt}
-														<span class="font-sans text-xs text-left leading-snug px-3 py-1.5 rounded-lg border bg-(--color-cream) border-(--color-sand) text-(--color-charcoal)">{opt}</span>
-													{/each}
-												</div>
-											</div>
-										{/if}
-									</button>
-								{/each}
-							</div>
-						</div>
-					{/each}
-				</div>
-			{/if}
-
-			<!-- STEP 2: Date + Slot -->
-			{#if step === 2}
+			<!-- STEP 1: Date + Slot -->
+			{#if step === 1}
 				<div class="glass-panel rounded-(--radius-card) p-6 sm:p-8">
 					<!-- Selected service recap -->
 					{#if selectedService}
@@ -428,10 +358,10 @@
 					{/if}
 
 					<div class="flex justify-between mt-8">
-						<button type="button" onclick={() => goToStep(1)} class="btn-ghost">← Retour</button>
+						<a href="/services" class="btn-ghost">← Changer de soin</a>
 						<button
 							type="button"
-							onclick={() => { if (selectedDate && selectedSlot) goToStep(3); }}
+							onclick={() => { if (selectedDate && selectedSlot) goToStep(2); }}
 							disabled={!selectedDate || !selectedSlot}
 							class="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
 						>
@@ -441,8 +371,8 @@
 				</div>
 			{/if}
 
-			<!-- STEP 3: Details + Confirm -->
-			{#if step === 3}
+			<!-- STEP 2: Details + Confirm -->
+			{#if step === 2}
 				<div class="glass-panel rounded-(--radius-card) p-6 sm:p-8">
 					<!-- Recap -->
 					<div class="bg-(--color-cream) rounded-sm border border-(--color-sand) p-5 mb-8">
@@ -497,7 +427,7 @@
 					{:else}
 						<!-- Identity chooser: guest / sign in / create account -->
 						<div class="flex gap-1 p-1 bg-(--color-cream) rounded-sm border border-(--color-sand) mb-6">
-							{#each [{ k: 'guest', label: 'Sans compte' }, { k: 'login', label: 'Connexion' }, { k: 'register', label: 'Créer un compte' }] as opt}
+							{#each [{ k: 'register', label: 'Créer un compte' }, { k: 'login', label: 'Connexion' }, { k: 'guest', label: 'Sans compte' }] as opt}
 								<button
 									type="button"
 									onclick={() => { authMode = opt.k as typeof authMode; authError = ''; }}
@@ -597,14 +527,14 @@
 							<input type="hidden" name="option" value={selectedOptions.join(', ')} />
 
 							<div class="flex justify-between mt-8">
-								<button type="button" onclick={() => goToStep(2)} class="btn-ghost">← Retour</button>
+								<button type="button" onclick={() => goToStep(1)} class="btn-ghost">← Retour</button>
 								<button type="submit" class="btn-primary bg-(--color-gold) hover:bg-(--color-gold-dark) !border-0">
 									Confirmer la réservation
 								</button>
 							</div>
 						{:else}
 							<div class="flex justify-start mt-8">
-								<button type="button" onclick={() => goToStep(2)} class="btn-ghost">← Retour</button>
+								<button type="button" onclick={() => goToStep(1)} class="btn-ghost">← Retour</button>
 							</div>
 						{/if}
 					</form>

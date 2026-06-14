@@ -39,7 +39,7 @@
 
 			<div class="flex flex-col sm:flex-row gap-4 justify-center">
 				<a href="/" class="btn-outline">Retour à l'accueil</a>
-				<a href="/reservation" class="btn-primary">Prendre rendez-vous</a>
+				<a href="/services" class="btn-primary">Prendre rendez-vous</a>
 			</div>
 		</div>
 	</div>

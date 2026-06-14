@@ -91,7 +91,7 @@
 						<p class="font-sans text-sm text-white/70 mb-8 leading-relaxed">
 							Choisissez votre soin, votre créneau et confirmez votre rendez-vous en quelques clics.
 						</p>
-						<a href="/reservation" class="inline-flex items-center gap-2 px-8 py-3.5 bg-(--color-gold) hover:bg-(--color-gold-dark) text-white font-sans text-sm tracking-widest uppercase rounded-sm transition-all duration-300">
+						<a href="/services" class="inline-flex items-center gap-2 px-8 py-3.5 bg-(--color-gold) hover:bg-(--color-gold-dark) text-white font-sans text-sm tracking-widest uppercase rounded-sm transition-all duration-300">
 							Prendre Rendez-vous
 						</a>
 					</div>

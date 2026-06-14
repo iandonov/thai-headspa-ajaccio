@@ -39,7 +39,29 @@
 </div>
 
 <div class="bg-white rounded-(--radius-card) border border-(--color-sand)/60 overflow-hidden">
-	<div class="overflow-x-auto">
+	<!-- Mobile: one stacked card per client (the 7-column table won't fit a phone) -->
+	<div class="md:hidden divide-y divide-(--color-sand)/40">
+		{#each filtered as c (c.id)}
+			<a href="/admin/clients/{c.id}" class="block p-4 hover:bg-(--color-cream)/40 transition-colors">
+				<div class="flex items-start justify-between gap-3">
+					<p class="font-sans text-sm font-medium text-(--color-charcoal)">{c.firstName} {c.lastName}</p>
+					<span class="font-serif text-base text-(--color-gold) shrink-0">{c.totalSpent}€</span>
+				</div>
+				<p class="font-sans text-xs text-(--color-stone) mt-1 break-all">{c.email}</p>
+				{#if c.phone}<p class="font-sans text-xs text-(--color-stone)/70">{c.phone}</p>{/if}
+				<div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 font-sans text-xs text-(--color-stone)">
+					<span>Inscrit&nbsp;: {fmtDate(c.createdAt)}</span>
+					<span>{c.bookingCount} réservation(s)</span>
+					<span>Dernière visite&nbsp;: {fmtDate(c.lastVisit)}</span>
+				</div>
+			</a>
+		{:else}
+			<p class="px-4 py-10 text-center font-sans text-sm text-(--color-stone)">Aucun client trouvé</p>
+		{/each}
+	</div>
+
+	<!-- Desktop: full table -->
+	<div class="hidden md:block overflow-x-auto">
 		<table class="w-full">
 			<thead class="bg-(--color-cream)">
 				<tr>

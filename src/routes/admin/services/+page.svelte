@@ -134,7 +134,7 @@
 		{#each group.services as service (service.id)}
 			{@const expanded = expandedId === service.id}
 			<div class="bg-white rounded-(--radius-card) border border-(--color-sand)/60 p-6">
-				<div class="flex items-start justify-between gap-4 {expanded ? 'mb-4' : ''}">
+				<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 {expanded ? 'mb-4' : ''}">
 					<div class="min-w-0">
 						<h3 class="font-serif text-xl text-(--color-charcoal)">{service.name}</h3>
 						<span class="font-sans text-xs text-(--color-stone)">

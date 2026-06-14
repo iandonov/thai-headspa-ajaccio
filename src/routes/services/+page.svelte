@@ -193,7 +193,7 @@
 				Tous nos soins sont proposés sur rendez-vous. Contactez-nous pour vérifier les disponibilités.
 			</p>
 			<div class="flex flex-col sm:flex-row gap-4 justify-center">
-				<a href="/reservation" class="btn-primary">Réserver en ligne</a>
+				<a href="/services" class="btn-primary">Choisir un soin</a>
 				<a href="tel:+33607949663" class="btn-outline">06 07 94 96 63</a>
 			</div>
 		</div>

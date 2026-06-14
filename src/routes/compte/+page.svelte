@@ -50,46 +50,13 @@
 			</div>
 		{/if}
 
-		<!-- Quick actions -->
-		<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
-			<a href="/reservation" class="glass-card p-6 text-center group rounded-(--radius-card)">
-				<div class="w-12 h-12 bg-(--color-forest)/10 rounded-full flex items-center justify-center mx-auto mb-3">
-					<svg class="w-6 h-6 text-(--color-forest)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-					</svg>
-				</div>
-				<p class="font-serif text-lg text-(--color-charcoal)">Réserver</p>
-				<p class="font-sans text-xs text-(--color-stone) mt-1">Prendre un rendez-vous</p>
-			</a>
-			<a href="/services" class="glass-card p-6 text-center group rounded-(--radius-card)">
-				<div class="w-12 h-12 bg-(--color-gold)/10 rounded-full flex items-center justify-center mx-auto mb-3">
-					<svg class="w-6 h-6 text-(--color-gold)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-					</svg>
-				</div>
-				<p class="font-serif text-lg text-(--color-charcoal)">Nos Soins</p>
-				<p class="font-sans text-xs text-(--color-stone) mt-1">Découvrir les prestations</p>
-			</a>
-			<form method="POST" action="/deconnexion">
-				<button type="submit" class="glass-card p-6 text-center w-full group rounded-(--radius-card) hover:!bg-red-50/90">
-					<div class="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-3">
-						<svg class="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-						</svg>
-					</div>
-					<p class="font-serif text-lg text-(--color-charcoal)">Déconnexion</p>
-					<p class="font-sans text-xs text-(--color-stone) mt-1">Quitter mon espace</p>
-				</button>
-			</form>
-		</div>
-
 		<!-- Upcoming bookings -->
 		<section class="mb-10">
 			<h2 class="font-serif text-2xl text-white mb-6 drop-shadow-[0_2px_12px_rgba(0,0,0,0.4)]">Rendez-vous à venir ({upcoming.length})</h2>
 			{#if upcoming.length === 0}
 				<div class="glass-panel rounded-(--radius-card) p-10 text-center">
 					<p class="font-serif text-xl text-(--color-stone) mb-4">Aucun rendez-vous à venir</p>
-					<a href="/reservation" class="btn-primary">Réserver maintenant</a>
+					<a href="/services" class="btn-primary">Réserver maintenant</a>
 				</div>
 			{:else}
 				<div class="space-y-4">
@@ -158,5 +125,17 @@
 				</div>
 			</section>
 		{/if}
+
+		<!-- Discreet logout -->
+		<div class="mt-12 pt-6 border-t border-white/15 text-center">
+			<form method="POST" action="/deconnexion">
+				<button type="submit" class="inline-flex items-center gap-2 font-sans text-xs text-white/50 hover:text-white/80 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+					</svg>
+					Déconnexion
+				</button>
+			</form>
+		</div>
 	</div>
 </div>

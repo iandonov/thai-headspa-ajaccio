@@ -59,7 +59,7 @@
 
 			<!-- CTA -->
 			<div class="mt-16 text-center">
-				<a href="/reservation" class="inline-flex items-center gap-2 px-12 py-4 bg-(--color-gold) hover:bg-(--color-gold-dark) text-white font-sans text-sm tracking-widest uppercase rounded-sm transition-all duration-300 hover:shadow-lg">
+				<a href="/services" class="inline-flex items-center gap-2 px-12 py-4 bg-(--color-gold) hover:bg-(--color-gold-dark) text-white font-sans text-sm tracking-widest uppercase rounded-sm transition-all duration-300 hover:shadow-lg">
 					Prendre Rendez-vous
 				</a>
 			</div>

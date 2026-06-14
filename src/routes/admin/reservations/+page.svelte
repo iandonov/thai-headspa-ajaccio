@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
 
@@ -35,19 +34,24 @@
 
 	const today = new Date();
 	const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+	// Current time HH:MM, used to count today's bookings still ahead of us.
+	const nowTimeStr = `${pad(today.getHours())}:${pad(today.getMinutes())}`;
 	let viewYear = $state(today.getFullYear());
 	let viewMonth = $state(today.getMonth()); // 0-based
 
-	// Default selection (captured once on load): the nearest day from today with
-	// active bookings, otherwise today.
-	const defaultDate = untrack(() =>
-		[...new Set(
-			data.bookings
-				.filter((b) => (b.status === 'pending' || b.status === 'confirmed') && b.date >= todayStr)
-				.map((b) => b.date)
-		)].sort()[0] ?? todayStr
+	// Opening the page always lands on the current day.
+	let selectedDate = $state(todayStr);
+
+	// Today's active bookings whose start time hasn't passed yet — i.e. still
+	// pending for the rest of the day. Recomputes after a status change.
+	const pendingTodayCount = $derived(
+		data.bookings.filter(
+			(b) =>
+				b.date === todayStr &&
+				(b.status === 'pending' || b.status === 'confirmed') &&
+				b.startTime >= nowTimeStr
+		).length
 	);
-	let selectedDate = $state(defaultDate);
 
 	function prevMonth() {
 		if (viewMonth === 0) { viewMonth = 11; viewYear -= 1; } else { viewMonth -= 1; }
@@ -115,8 +119,15 @@
 <div class="mb-8">
 	<h1 class="font-serif text-3xl text-(--color-charcoal)">Réservations</h1>
 	<p class="font-sans text-sm text-(--color-stone) mt-1">
-		{data.bookings.length} réservation(s) au total · cliquez sur un jour pour voir le détail
+		Cliquez sur un jour pour voir le détail
 	</p>
+	<span class="inline-flex items-center gap-2 mt-3 px-3 py-1.5 rounded-full border font-sans text-xs
+		{pendingTodayCount > 0 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-(--color-cream) border-(--color-sand) text-(--color-stone)'}">
+		<span class="w-1.5 h-1.5 rounded-full {pendingTodayCount > 0 ? 'bg-amber-500' : 'bg-(--color-stone)/40'}"></span>
+		{pendingTodayCount === 0
+			? "Aucun rendez-vous restant aujourd'hui"
+			: `${pendingTodayCount} rendez-vous à venir aujourd'hui`}
+	</span>
 </div>
 
 <!-- ============================ CALENDAR ============================ -->
