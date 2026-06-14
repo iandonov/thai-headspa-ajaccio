@@ -54,6 +54,28 @@ $VfsBase = "https://$App.scm.azurewebsites.net/api/vfs/" + (($RemoteDir -replace
 
 function Step($msg) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 
+# Stop local Node.js processes (the dev server, stray tooling) so nothing on this
+# machine is writing while we operate. Never touches THIS script's own process
+# tree (the npm/pwsh that launched it), or we'd kill the migration mid-run.
+# (The DB this script migrates is the one downloaded from Azure — migrate-db.ts
+# checkpoints that copy — so there is no local file to consolidate here.)
+function Stop-LocalNode {
+  $protected = [System.Collections.Generic.HashSet[int]]::new()
+  $cursor = $PID
+  while ($cursor -and $protected.Add([int]$cursor)) {
+    $p = Get-CimInstance Win32_Process -Filter "ProcessId = $cursor" -ErrorAction SilentlyContinue
+    $cursor = [int]($p.ParentProcessId)
+  }
+  $node = @(Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object { -not $protected.Contains([int]$_.Id) })
+  if ($node.Count -gt 0) {
+    Write-Host "  Stopping $($node.Count) Node process(es) [PID: $($node.Id -join ', ')]..."
+    $node | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
+  } else {
+    Write-Host '  No stray Node processes running.'
+  }
+}
+
 function Invoke-AzLogin {
   # The ARM scope matters: the Kudu API is called with a bearer token for that
   # audience, and an MFA-enforcing tenant only issues it during an interactive
@@ -189,6 +211,10 @@ try {
   if (-not $Force -and -not $BackupOnly) {
     throw "This migrates the production database in place (a backup is kept under ./$BackupDir). Re-run with -Force to proceed, or -BackupOnly to only download a snapshot."
   }
+
+  # Quiesce the local machine (no dev server writing) for a clean run.
+  Step 'Stopping local Node'
+  Stop-LocalNode
 
   if (-not (az account show --query id -o tsv 2>$null)) {
     Write-Host 'No active Azure session.' -ForegroundColor Yellow

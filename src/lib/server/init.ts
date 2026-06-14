@@ -16,8 +16,11 @@ export function initDatabase() {
 	// Create tables + bring older databases up to the latest schema.
 	createSchema(sqlite);
 
-	seedDatabase();
-	seedPackages();
+	// Packages are part of the one-time initial seed: only add them when the DB
+	// was genuinely empty, so admin-deleted/recategorised packages never return
+	// (and a surviving slug can't collide and crash boot).
+	const freshlySeeded = seedDatabase();
+	if (freshlySeeded) seedPackages();
 	seedCategories();
 	seedSettings();
 	seedHolidays();

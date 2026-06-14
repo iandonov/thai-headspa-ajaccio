@@ -30,6 +30,10 @@ vite.config.ts.timestamp-*
 # Production DB snapshots from scripts/migrate-db-azure.ps1
 /backups
 
+# Azure log downloads (az webapp log download) used when debugging deploys
+/azure-logs
+/azure-logs.zip
+
 # Playwright
 /test-results
 /playwright-report

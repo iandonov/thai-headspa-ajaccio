@@ -6,9 +6,12 @@ import { frenchHolidays } from '../availability';
 
 export { frenchHolidays };
 
-export async function seedDatabase() {
+// Returns true only when it actually seeded an empty database. Callers use this
+// to run the one-time companion seeds (e.g. packages) ONLY on a fresh install,
+// so admin-curated content is never re-created on later boots.
+export function seedDatabase(): boolean {
 	const existingServices = db.select().from(services).all();
-	if (existingServices.length > 0) return;
+	if (existingServices.length > 0) return false;
 
 	db.insert(services).values([
 		{
@@ -102,10 +105,15 @@ export async function seedDatabase() {
 		{ key: 'formules_title', value: 'Des Formules Personnalisables', type: 'text' },
 		{ key: 'formules_tagline', value: 'Des formules personnalisables selon vos envies grâce à nos options exclusives.', type: 'text' },
 	]).run();
+
+	return true;
 }
 
-// Idempotent: inserts the signature "formules" (selectable packages) if absent.
-// Runs separately from seedDatabase so it also applies to already-seeded databases.
+// Seeds the signature "formules" (selectable packages). Call ONLY on a fresh DB
+// (gated on seedDatabase's return) so packages the admin later deletes or
+// recategorises are never re-created — which previously also crashed boot when a
+// surviving slug collided with the re-insert. onConflictDoNothing is kept as a
+// belt-and-suspenders against that slug UNIQUE index.
 export function seedPackages() {
 	const existing = db.select().from(services).where(eq(services.category, 'formule')).all();
 	if (existing.length > 0) return;
@@ -183,6 +191,11 @@ export function seedPackages() {
 		},
 	];
 
+	// onConflictDoNothing guards the slug UNIQUE index: if a package was renamed,
+	// recategorised, or partially deleted via the admin, its slug may still exist
+	// even though no `category='formule'` row does. Without this, the batch insert
+	// throws and — since this runs in initDatabase() at boot — crashes the whole
+	// server (HTTP 503). Skipping conflicts keeps the deployed data authoritative.
 	db.insert(services).values(
 		formules.map((f) => ({
 			slug: f.slug,
@@ -197,7 +210,7 @@ export function seedPackages() {
 			active: true,
 			sortOrder: f.sortOrder,
 		}))
-	).run();
+	).onConflictDoNothing().run();
 
 	// Ensure formules CMS keys exist (so they are editable even on pre-existing DBs)
 	const formuleContent = [

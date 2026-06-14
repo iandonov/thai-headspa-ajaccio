@@ -45,6 +45,42 @@ $VfsBase = "https://$App.scm.azurewebsites.net/api/vfs/" + (($RemoteDir -replace
 
 function Step($msg) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 
+# Stop local Node.js processes (the dev server, stray tooling) that hold the
+# SQLite file open or keep appending to its WAL. Never touches THIS script's own
+# process tree (the npm/pwsh that launched it), or we'd kill the deploy mid-run.
+function Stop-LocalNode {
+  $protected = [System.Collections.Generic.HashSet[int]]::new()
+  $cursor = $PID
+  while ($cursor -and $protected.Add([int]$cursor)) {
+    $p = Get-CimInstance Win32_Process -Filter "ProcessId = $cursor" -ErrorAction SilentlyContinue
+    $cursor = [int]($p.ParentProcessId)
+  }
+  $node = @(Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object { -not $protected.Contains([int]$_.Id) })
+  if ($node.Count -gt 0) {
+    Write-Host "  Stopping $($node.Count) Node process(es) [PID: $($node.Id -join ', ')] so the local DB is quiescent..."
+    $node | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
+  } else {
+    Write-Host '  No stray Node processes holding the local database.'
+  }
+}
+
+# Flush the dev server's write-ahead log into the main .db file. This script
+# uploads ONLY the main file (and deletes the remote WAL), so committed writes
+# still stranded in <db>-wal would otherwise never reach the server. TRUNCATE
+# also clears the sidecar once the frames are merged in.
+function Invoke-WalCheckpoint($DbFile) {
+  if (-not (Test-Path $DbFile)) { return }
+  $wal = "$DbFile-wal"
+  if (Test-Path $wal) {
+    Write-Host ("  WAL sidecar present ({0:N1} KB) — checkpointing into $DbFile..." -f ((Get-Item $wal).Length / 1KB))
+  } else {
+    Write-Host "  No WAL sidecar — $DbFile is already consolidated."
+  }
+  node -e "const D=require('better-sqlite3');const db=new D(process.argv[1]);db.pragma('journal_mode = WAL');const r=db.pragma('wal_checkpoint(TRUNCATE)');db.close();console.log('  checkpoint:',JSON.stringify(r[0]??r));" "$DbFile"
+  if ($LASTEXITCODE -ne 0) { throw "WAL checkpoint failed for $DbFile (exit $LASTEXITCODE). Is a Node process still locking it?" }
+}
+
 function Invoke-AzLogin {
   # The ARM scope matters: the Kudu VFS API is called with a bearer token for
   # that audience, and an MFA-enforcing tenant only issues it during an
@@ -154,6 +190,13 @@ try {
   if (-not $Force) {
     throw "Refusing to overwrite the production database at $RemoteDir/$DbName. Re-run with -Force if you really mean it."
   }
+
+  # The dev server runs SQLite in WAL mode and keeps the connection open, so the
+  # main .db file can lag far behind the live state (everything sits in the WAL).
+  # Stop Node and checkpoint BEFORE upload so we ship the current local data.
+  Step 'Consolidating local database'
+  Stop-LocalNode
+  Invoke-WalCheckpoint $File
 
   if (-not (az account show --query id -o tsv 2>$null)) {
     Write-Host 'No active Azure session.' -ForegroundColor Yellow

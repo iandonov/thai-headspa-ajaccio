@@ -42,6 +42,7 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $Stage    = Join-Path $RepoRoot 'deploy-stage'
 $Zip      = Join-Path $RepoRoot 'deploy.zip'
 $BaseUrl  = "https://$App.azurewebsites.net"
+$ScmBase  = "https://$App.scm.azurewebsites.net"
 
 function Step($msg) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 
@@ -67,10 +68,57 @@ function New-Zip($SourceDir) {
   Write-Host ("deploy.zip = {0:N1} MB" -f ((Get-Item $Zip).Length / 1MB))
 }
 
-function Invoke-Deploy {
+# Bearer header for the Kudu (SCM) site — used to read the real deployment
+# status, which survives the CLI's gateway timeouts.
+function Get-KuduHeader {
+  $t = az account get-access-token --resource 'https://management.azure.com/' --query accessToken -o tsv 2>$null
+  if ($LASTEXITCODE -ne 0 -or -not $t) { throw 'Could not obtain an ARM access token for the Kudu deployment API.' }
+  return @{ Authorization = "Bearer $t" }
+}
+
+# Poll the Kudu deployment status until it finishes. Returns $true only on a
+# genuine success (status 4). This is the source of truth: `az webapp deploy`
+# routinely returns a 502/504 because the gateway drops the synchronous wait
+# while the build runs on — but the deployment itself keeps going server-side.
+function Wait-DeploymentComplete([int]$TimeoutSec) {
+  $headers = Get-KuduHeader
+  $deadline = (Get-Date).AddSeconds($TimeoutSec)
+  $lastProgress = ''
+  while ((Get-Date) -lt $deadline) {
+    try {
+      $r = Invoke-WebRequest -Uri "$ScmBase/api/deployments/latest" -Headers $headers -TimeoutSec 30 -SkipHttpErrorCheck
+      if ($r.StatusCode -eq 200) {
+        $d = $r.Content | ConvertFrom-Json
+        if ($d.progress -and $d.progress -ne $lastProgress) { Write-Host "  $($d.progress)"; $lastProgress = $d.progress }
+        if ($d.complete) {
+          # Kudu DeployStatus: 4 = Success, 3 = Failed.
+          if ($d.status -eq 4) { Write-Host '  Deployment completed successfully.'; return $true }
+          Write-Host "  Deployment FAILED (status $($d.status))."
+          return $false
+        }
+      } elseif ($r.StatusCode -in 401, 403) {
+        throw "Kudu rejected the credentials (HTTP $($r.StatusCode))."
+      }
+    } catch {
+      Write-Host "  status check retry ($($_.Exception.Message))"
+    }
+    Start-Sleep -Seconds 8
+  }
+  Write-Host '  Timed out waiting for the deployment to complete.'
+  return $false
+}
+
+# Push the zip ASYNCHRONOUSLY: the CLI returns as soon as the artifact is
+# uploaded, so a slow Oryx build (reliable) or a large artifact (fast) can't trip
+# the gateway's ~230s synchronous timeout. We then confirm completion against the
+# real Kudu status. Returns $true only when the deployment genuinely succeeded.
+function Invoke-Deploy([int]$BuildTimeoutSec) {
   az webapp deploy -n $App -g $ResourceGroup --src-path $Zip --type zip `
-    --clean true --track-status false | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw "az webapp deploy failed (exit $LASTEXITCODE)." }
+    --clean true --async true --track-status false | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    Write-Warning "az webapp deploy exit $LASTEXITCODE (usually a gateway timeout on the upload response) — verifying server-side status..."
+  }
+  return (Wait-DeploymentComplete $BuildTimeoutSec)
 }
 
 function Test-Healthy {
@@ -204,32 +252,38 @@ try {
   New-Zip $Stage
 
   Step 'Deploying to Azure'
-  Invoke-Deploy
-  Write-Host 'Upload reported success by Kudu.'
+  # Fast just extracts the prebuilt artifact (~1-2 min); reliable runs Oryx's
+  # npm install + vite build server-side (~5-8 min).
+  $deployBudget = if ($Fast) { 300 } else { 600 }
+  $deployed = Invoke-Deploy $deployBudget
 
   Step 'Verifying live site'
-  if (Test-Healthy) {
+  if ($deployed -and (Test-Healthy)) {
     Write-Host ("`nDeployed and healthy in {0:m\:ss}: $BaseUrl" -f $sw.Elapsed) -ForegroundColor Green
   }
   elseif ($Fast) {
-    # The prebuilt artifact didn't boot — fall back to the reliable Oryx build.
-    Write-Warning 'Fast artifact failed health check; falling back to reliable Oryx build...'
+    # The prebuilt artifact failed to deploy or boot — fall back to reliable Oryx.
+    Write-Warning 'Fast deploy did not come up healthy; falling back to reliable Oryx build...'
     Step 'Staging source (fallback)'
     Build-SourceStage
     Set-BuildMode $true
     New-Zip $Stage
-    Invoke-Deploy
-    if (Test-Healthy) {
+    Step 'Deploying to Azure (fallback)'
+    if ((Invoke-Deploy 600) -and (Test-Healthy)) {
       Write-Host ("`nDeployed via fallback in {0:m\:ss}: $BaseUrl" -f $sw.Elapsed) -ForegroundColor Green
     } else {
-      throw "Site did not return 200 within $HealthTimeoutSec s (even after fallback). Check: $BaseUrl"
+      throw "Site did not come up healthy even after the reliable fallback. Check: $BaseUrl"
     }
   }
   else {
-    throw "Site did not return 200 within $HealthTimeoutSec s. Check: $BaseUrl"
+    throw "Deployment did not complete/boot within budget. Check: $BaseUrl and the Kudu deployment log."
   }
 }
 finally {
+  # Clean every build/deploy artifact this script produces. Fast mode runs a
+  # local `npm run build`, which leaves `build/` in the repo root (reliable mode
+  # builds on Azure, so it never creates one locally).
   Remove-Item -Recurse -Force $Stage -ErrorAction SilentlyContinue
   Remove-Item -Force $Zip -ErrorAction SilentlyContinue
+  if ($Fast) { Remove-Item -Recurse -Force (Join-Path $RepoRoot 'build') -ErrorAction SilentlyContinue }
 }
