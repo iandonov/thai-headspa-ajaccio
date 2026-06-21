@@ -25,6 +25,13 @@ export const actions: Actions = {
 		const endTime = String(data.get('endTime'));
 		const active = data.get('active') === 'on';
 		if (!id) return fail(400);
+		// Reject empty/malformed times: blank hours would feed NaN into the slot
+		// computation and silently make the day unbookable. Times must be "HH:MM"
+		// and the day must open before it closes.
+		const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
+		if (!timeRe.test(startTime) || !timeRe.test(endTime) || startTime >= endTime) {
+			return fail(400, { error: 'Horaires invalides.' });
+		}
 		db.update(availability).set({ startTime, endTime, active }).where(eq(availability.id, id)).run();
 		return { success: true };
 	},

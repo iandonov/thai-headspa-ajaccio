@@ -182,7 +182,8 @@ export const actions: Actions = {
 			date,
 			startTime,
 			endTime,
-			status: 'pending',
+			// Bookings are confirmed automatically; the admin only cancels if needed.
+			status: 'confirmed',
 			option: option || null,
 			notes: notes || null,
 			createdAt: new Date(),

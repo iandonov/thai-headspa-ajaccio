@@ -14,6 +14,7 @@ import {
 	removeClosure,
 	resetAvailabilityToSeed,
 	setAvailability,
+	getAvailability,
 	countBookings,
 	bookingStatus,
 	categoryExists,
@@ -153,7 +154,61 @@ test.describe('Admin · disponibilités', () => {
 		await expect(page.locator('#total-beds')).toHaveValue('4');
 	});
 
+	test('saving a working day persists hours + active flag without blanking the form', async ({ page }) => {
+		// Single known row so there is exactly one weekly-schedule update form.
+		setAvailability([{ dayOfWeek: 4, startTime: '09:00', endTime: '18:00', active: true }]);
+		const id = getAvailability().find((r) => r.dayOfWeek === 4)!.id;
+
+		await page.goto('/admin/disponibilites');
+		const start = page.locator(`#start-${id}`);
+		const end = page.locator(`#end-${id}`);
+		const active = page.locator(`#active-${id}`);
+		await expect(start).toHaveValue('09:00');
+
+		// Edit the hours and turn the day off, then save. The retry only absorbs
+		// the unrelated pre-hydration race (an early fill reverted before submit);
+		// once a save lands, the assertions below verify the form never blanks.
+		const form = page.locator('form[action="?/update"]').filter({ has: start });
+		await expect(async () => {
+			await start.fill('10:30');
+			await end.fill('19:30');
+			if (await active.isChecked()) await active.uncheck();
+			await form.getByRole('button', { name: 'Sauvegarder' }).click();
+			await expect.poll(() => getAvailability().find((r) => r.dayOfWeek === 4)?.startTime, { timeout: 3000 }).toBe('10:30');
+		}).toPass({ timeout: 15_000 });
+
+		const row = getAvailability().find((r) => r.dayOfWeek === 4)!;
+		expect(row.endTime).toBe('19:30');
+		expect(row.active).toBe(0);
+
+		// The form keeps showing the saved values instead of resetting to blank/checked.
+		await expect(start).toHaveValue('10:30');
+		await expect(end).toHaveValue('19:30');
+		await expect(active).not.toBeChecked();
+
+		// And a fresh load renders the persisted state.
+		await page.goto('/admin/disponibilites');
+		await expect(page.locator(`#start-${id}`)).toHaveValue('10:30');
+		await expect(page.locator(`#active-${id}`)).not.toBeChecked();
+	});
+
+	test('saving the hours shows a confirmation toast', async ({ page }) => {
+		setAvailability([{ dayOfWeek: 4, startTime: '09:00', endTime: '18:00', active: true }]);
+		const id = getAvailability().find((r) => r.dayOfWeek === 4)!.id;
+
+		await page.goto('/admin/disponibilites');
+		const form = page.locator('form[action="?/update"]').filter({ has: page.locator(`#start-${id}`) });
+
+		// Retry to absorb the pre-hydration window where a submit does a full
+		// navigation (no enhance, no toast); once hydrated, the toast appears.
+		await expect(async () => {
+			await form.getByRole('button', { name: 'Sauvegarder' }).click();
+			await expect(page.getByRole('status')).toContainText('Horaires enregistrés', { timeout: 1500 });
+		}).toPass({ timeout: 15_000 });
+	});
+
 	test('calendar shows holidays and lets admin close an open day', async ({ page }) => {
+		resetAvailabilityToSeed(); // need open weekdays so "Ouvert" cells exist
 		await page.goto('/admin/disponibilites');
 		const calendar = page.locator('section').filter({ hasText: 'Calendrier des fermetures' });
 		await expect(calendar).toBeVisible();
@@ -250,9 +305,10 @@ test.describe('Admin · réservations', () => {
 		const cell = page.locator(`button[data-date="${date}"]:visible`).first();
 		await expect(cell).toContainText('1 rés.');
 
-		// The nearest day with bookings is selected by default — its list shows
-		// the service and the option chip picked at booking time. Scope to the
-		// booking row: the same data also renders in the (hidden) mobile cards.
+		// The page opens on today; select the booked day to view its list. It
+		// shows the service and the option chip picked at booking time. Scope to
+		// the booking row: the same data also renders in the (hidden) mobile cards.
+		await cell.click();
 		const row = page.locator('tr', { hasText: 'Option Vue' });
 		await expect(row).toBeVisible();
 		await expect(row.getByText('Massage Personnalisé')).toBeVisible();
@@ -293,8 +349,9 @@ test.describe('Admin · réservations', () => {
 			guestEmail: 'statut@test.local',
 		});
 
-		// The day list defaults to the nearest upcoming day with bookings.
+		// The page opens on today; select the seeded day to view its list.
 		await page.goto('/admin/reservations');
+		await page.locator(`button[data-date="${date}"]:visible`).first().click();
 		const row = page.locator('tr', { hasText: 'Statut Test' });
 		await expect(row).toBeVisible();
 		// Scope to the status badge span ("En attente" also appears as a <option>).
@@ -309,8 +366,9 @@ test.describe('Admin · réservations', () => {
 			expect(bookingStatus(bookingId)).toBe('confirmed');
 		}).toPass({ timeout: 15_000 });
 
-		// Reload and confirm the badge reflects the new status.
+		// Reload, reselect the day, and confirm the badge reflects the new status.
 		await page.goto('/admin/reservations');
+		await page.locator(`button[data-date="${date}"]:visible`).first().click();
 		await expect(
 			page.locator('tr', { hasText: 'Statut Test' }).locator('span', { hasText: 'Confirmé' })
 		).toBeVisible();
@@ -353,7 +411,6 @@ test.describe('Admin · booking restriction', () => {
 		setBeds(3);
 		clearBookings();
 
-		await page.goto('/reservation');
 		await selectServiceAndContinue(page, 'Réflexologie Pieds & Mains');
 		const slot = await pickFirstDayWithSlots(page);
 		await slot.click();

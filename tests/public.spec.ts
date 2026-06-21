@@ -27,11 +27,11 @@ test.describe('Public site', () => {
 		await expect(page.getByRole('heading', { name: 'Nos Formules', level: 2 })).not.toBeVisible();
 	});
 
-	test('home CTA navigates to the reservation flow', async ({ page }) => {
+	test('home CTA navigates to the soin catalogue (booking now starts there)', async ({ page }) => {
 		await page.goto('/');
 		await page.getByRole('link', { name: 'Réserver un Soin' }).first().click();
-		await expect(page).toHaveURL(/\/reservation/);
-		await expect(page.getByRole('heading', { name: 'Choisissez votre soin' })).toBeVisible();
+		await expect(page).toHaveURL(/\/services/);
+		await expect(page.getByRole('heading', { name: 'Soins & Massages' })).toBeVisible();
 	});
 
 	test('main navigation links work', async ({ page }) => {

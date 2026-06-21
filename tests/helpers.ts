@@ -194,6 +194,15 @@ export function removeClosure(date: string) {
 	withDb((db) => db.prepare('DELETE FROM closures WHERE date = ?').run(date));
 }
 
+// Read the weekly schedule rows straight from the DB (source of truth).
+export function getAvailability(): { id: number; dayOfWeek: number; startTime: string; endTime: string; active: number }[] {
+	return withDb((db) =>
+		db
+			.prepare('SELECT id, day_of_week as dayOfWeek, start_time as startTime, end_time as endTime, active FROM availability ORDER BY day_of_week')
+			.all() as { id: number; dayOfWeek: number; startTime: string; endTime: string; active: number }[]
+	);
+}
+
 // Replace the weekly schedule with the given rows (clears all existing rows).
 export function setAvailability(rows: { dayOfWeek: number; startTime: string; endTime: string; active?: boolean }[]) {
 	withDb((db) => {
@@ -218,15 +227,17 @@ export function resetAvailabilityToSeed() {
 
 // --- Shared booking-flow UI helpers ------------------------------------------
 
-// Step 1: select a service by its visible name. Each service card is a button
-// that jumps straight to the date step (no separate "next" button); its options
-// are preselected and stay editable in the step-2 recap. Retried in case the
-// first click lands before Svelte hydration wires up the handler.
+// Step 1: select a service by its visible name. The booking flow now starts on
+// /services — each soin card has a "Réserver ce soin" link that carries its
+// (all-by-default) options into the /reservation date step. Navigates there and
+// follows that link, landing on the date step with the service preselected.
 export async function selectServiceAndContinue(page: Page, serviceName: string) {
-	const serviceBtn = page.locator('.glass-panel button').filter({ hasText: serviceName }).first();
+	await page.goto('/services');
+	const card = page.locator('.glass-card').filter({ hasText: serviceName });
+	const reserve = card.getByRole('link', { name: 'Réserver ce soin' });
 	const dateHeading = page.getByRole('heading', { name: 'Choisissez une date' });
 	await expect(async () => {
-		await serviceBtn.click();
+		await reserve.click();
 		await expect(dateHeading).toBeVisible({ timeout: 1000 });
 	}).toPass({ timeout: 15_000 });
 }

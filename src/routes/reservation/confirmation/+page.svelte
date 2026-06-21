@@ -17,9 +17,9 @@
 				<div class="h-px w-12 bg-(--color-sand)"></div>
 			</div>
 
-			<h1 class="font-serif text-3xl text-(--color-charcoal) mb-3">Demande Envoyée !</h1>
+			<h1 class="font-serif text-3xl text-(--color-charcoal) mb-3">Réservation Confirmée !</h1>
 			<p class="font-sans text-base text-(--color-stone) leading-relaxed mb-8">
-				Votre demande de rendez-vous a bien été reçue. Nous vous confirmerons votre réservation dans les plus brefs délais par téléphone ou email.
+				Votre rendez-vous est confirmé. Nous avons hâte de vous accueillir. Retrouvez le détail à tout moment dans votre espace.
 			</p>
 
 			<div class="bg-(--color-cream) rounded-sm border border-(--color-sand) p-5 mb-8 text-left">
@@ -27,7 +27,7 @@
 				<ul class="space-y-2 font-sans text-sm text-(--color-stone)">
 					<li class="flex items-start gap-2">
 						<span class="text-(--color-gold) mt-0.5">✦</span>
-						<span>Nous vous contacterons sous 24h pour confirmer</span>
+						<span>Besoin de modifier ? Appelez-nous au 06 07 94 96 63</span>
 					</li>
 					<li class="flex items-start gap-2">
 						<span class="text-(--color-gold) mt-0.5">✦</span>

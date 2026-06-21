@@ -22,8 +22,6 @@ test('guest can complete a booking end-to-end', async ({ page }) => {
 	setBeds(3);
 	clearBookings();
 
-	await page.goto('/reservation');
-
 	await selectServiceAndContinue(page, 'Réflexologie Pieds & Mains');
 
 	await expect(page.getByRole('heading', { name: 'Choisissez une date' })).toBeVisible();
@@ -32,12 +30,14 @@ test('guest can complete a booking end-to-end', async ({ page }) => {
 	await page.getByRole('button', { name: /Continuer/ }).click();
 
 	await expect(page.getByRole('heading', { name: 'Vos coordonnées' })).toBeVisible();
+	// The details step defaults to "Créer un compte"; book as a guest instead.
+	await page.getByRole('button', { name: 'Sans compte' }).click();
 	await page.locator('#guest-name').fill('Marie Testeur');
 	await page.locator('#guest-email').fill('marie.testeur@example.com');
 	await page.getByRole('button', { name: 'Confirmer la réservation' }).click();
 
 	await expect(page).toHaveURL(/\/reservation\/confirmation/);
-	await expect(page.getByRole('heading', { name: /Demande Envoyée/ })).toBeVisible();
+	await expect(page.getByRole('heading', { name: /Réservation Confirmée/ })).toBeVisible();
 });
 
 test('a selected option chip is stored on the booking', async ({ page }) => {
@@ -45,10 +45,9 @@ test('a selected option chip is stored on the booking', async ({ page }) => {
 	setBeds(3);
 	clearBookings();
 
-	await page.goto('/reservation');
-
 	// Picking a service jumps to the date step with every option preselected;
-	// options are toggled in the step-2 recap (each is an aria-pressed button).
+	// they ride along from /services and stay toggleable in the recap (each is an
+	// aria-pressed button).
 	await selectServiceAndContinue(page, 'Massage Personnalisé');
 
 	const chips = page.locator('button[aria-pressed]');
@@ -71,6 +70,7 @@ test('a selected option chip is stored on the booking', async ({ page }) => {
 	await expect(page.getByText('Option', { exact: true })).toBeVisible();
 	await expect(page.getByText('Aromathérapie', { exact: true })).toBeVisible();
 
+	await page.getByRole('button', { name: 'Sans compte' }).click();
 	await page.locator('#guest-name').fill('Option Testeur');
 	await page.locator('#guest-email').fill('option.testeur@example.com');
 	await page.getByRole('button', { name: 'Confirmer la réservation' }).click();

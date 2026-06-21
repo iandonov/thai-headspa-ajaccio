@@ -27,7 +27,6 @@ test('register → book → track → cancel', async ({ page }) => {
 
 	// 2. Book a soin. As an authenticated client the details step is pre-filled,
 	// so we confirm directly.
-	await page.goto('/reservation');
 	await selectServiceAndContinue(page, 'Réflexologie Pieds & Mains');
 	const slot = await pickFirstDayWithSlots(page);
 	await slot.click();

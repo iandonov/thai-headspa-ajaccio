@@ -1,7 +1,29 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import type { SubmitFunction } from '@sveltejs/kit';
+	import { fly } from 'svelte/transition';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
+
+	// Transient confirmation toast — there is no full-page reload to signal a save,
+	// so without this the admin can't tell a save succeeded.
+	let toast = $state<string | null>(null);
+	let toastTimer: ReturnType<typeof setTimeout> | undefined;
+	function showToast(message: string) {
+		toast = message;
+		clearTimeout(toastTimer);
+		toastTimer = setTimeout(() => (toast = null), 2500);
+	}
+
+	// Forms with persistent, editable inputs (hours, capacity) must NOT use the
+	// default enhance behaviour: on success it calls the native form.reset(),
+	// which reverts every field to its (empty) defaultValue and wipes the value
+	// the admin just entered. Keep the values, re-pull the saved state, and
+	// surface a toast so the save is unmistakable.
+	const saveAnd = (message: string): SubmitFunction => () => async ({ update, result }) => {
+		await update({ reset: false });
+		if (result.type === 'success') showToast(message);
+	};
 
 	const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 	const weekHeaders = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -154,7 +176,7 @@
 <section class="bg-white rounded-(--radius-card) border border-(--color-sand)/60 p-6 mb-8">
 	<h2 class="font-serif text-xl text-(--color-charcoal) mb-1">Capacité</h2>
 	<p class="font-sans text-xs text-(--color-stone) mb-4">Nombre de lits/tables pouvant être occupés simultanément.</p>
-	<form method="POST" action="?/setBeds" use:enhance class="flex items-end gap-4">
+	<form method="POST" action="?/setBeds" use:enhance={saveAnd('Capacité enregistrée')} class="flex items-end gap-4">
 		<div>
 			<label for="total-beds" class="block font-sans text-xs uppercase tracking-wider text-(--color-stone) mb-1">Lits disponibles</label>
 			<input id="total-beds" type="number" name="totalBeds" value={data.totalBeds} min="1" step="1"
@@ -182,7 +204,7 @@
 						<button type="submit" class="text-xs font-sans text-red-600 hover:text-red-700 hover:underline">Retirer ce jour</button>
 					</form>
 				</div>
-				<form method="POST" action="?/update" use:enhance class="flex flex-wrap items-end gap-4">
+				<form method="POST" action="?/update" use:enhance={saveAnd('Horaires enregistrés')} class="flex flex-wrap items-end gap-4">
 					<input type="hidden" name="id" value={avail.id} />
 					<div>
 						<label for="start-{avail.id}" class="block font-sans text-xs uppercase tracking-wider text-(--color-stone) mb-1">Ouverture</label>
@@ -233,3 +255,18 @@
 		</form>
 	{/if}
 </section>
+
+<!-- ============================ SAVE TOAST ============================ -->
+{#if toast}
+	<div
+		role="status"
+		aria-live="polite"
+		transition:fly={{ y: 12, duration: 200 }}
+		class="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-(--color-forest) text-white px-4 py-3 rounded-(--radius-card) shadow-lg font-sans text-sm"
+	>
+		<svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+		</svg>
+		{toast}
+	</div>
+{/if}
