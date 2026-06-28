@@ -194,8 +194,28 @@
 				</div>
 			</div>
 
-			<div class="border-t border-white/10 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-				<p class="text-xs text-white/30">© 2024 Thai Head Spa Ajaccio. Tous droits réservés.</p>
+			<div class="border-t border-white/10 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center md:items-start gap-4">
+				<div class="flex flex-col items-center md:items-start gap-2">
+					<p class="text-xs text-white/30">© 2026 Thai Head Spa Ajaccio. Tous droits réservés.</p>
+					<a
+						href="https://mirando.services/"
+						target="_blank"
+						rel="noopener"
+						class="group flex items-center gap-2 text-xs text-white/30 hover:text-white/70 transition-colors"
+						title="Création de site web — MirAndo Services"
+					>
+						<span>Développé par</span>
+						<img
+							src="/images/mirando-logo.jpg"
+							alt="MirAndo Services"
+							width="20"
+							height="20"
+							loading="lazy"
+							class="w-5 h-5 rounded-full object-cover ring-1 ring-white/20 group-hover:ring-(--color-gold)/70 transition-all"
+						/>
+						<span class="font-medium">MirAndo Services</span>
+					</a>
+				</div>
 				<div class="flex gap-6">
 					<a href="/mentions-legales" class="hidden text-xs text-white/30 hover:text-white/60 transition-colors">Mentions légales</a>
 					<a href="/politique-confidentialite" class="text-xs text-white/30 hover:text-white/60 transition-colors">Confidentialité</a>

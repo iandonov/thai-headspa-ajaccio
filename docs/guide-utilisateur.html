@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide Client — Thai Head Spa Ajaccio</title>
+<style>
+  :root {
+    --forest: #1a3329;
+    --forest-light: #2c5040;
+    --gold: #b8924f;
+    --gold-dark: #9a7838;
+    --cream: #f7f4ee;
+    --sand: #e4ddcf;
+    --stone: #8a8275;
+    --charcoal: #2e2b26;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--charcoal);
+    background: var(--cream);
+    line-height: 1.65;
+  }
+  .serif { font-family: Georgia, "Times New Roman", serif; }
+
+  /* Header */
+  header.hero {
+    background: linear-gradient(rgba(26,51,41,0.92), rgba(26,51,41,0.96));
+    color: #fff;
+    padding: 56px 24px 48px;
+    text-align: center;
+  }
+  header.hero .kicker {
+    font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 12px;
+  }
+  header.hero h1 {
+    font-family: Georgia, serif; font-weight: 400;
+    font-size: clamp(28px, 5vw, 44px); margin: 0 0 8px;
+  }
+  header.hero p { color: rgba(255,255,255,0.7); max-width: 560px; margin: 8px auto 0; }
+  .rule { display:flex; align-items:center; justify-content:center; gap:16px; margin:20px 0 0; }
+  .rule span { color: var(--gold); }
+  .rule i { display:block; width:54px; height:1px; background:rgba(255,255,255,0.25); }
+
+  /* Layout */
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 24px; }
+  main { padding: 48px 0 80px; }
+
+  /* TOC */
+  nav.toc {
+    background: #fff; border: 1px solid var(--sand); border-radius: 10px;
+    padding: 22px 26px; margin: -36px auto 44px; max-width: 720px;
+    box-shadow: 0 10px 30px rgba(26,51,41,0.08); position: relative;
+  }
+  nav.toc h2 {
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--gold-dark); margin: 0 0 14px;
+  }
+  nav.toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 36px; }
+  nav.toc li { margin-bottom: 7px; break-inside: avoid; }
+  nav.toc a { color: var(--forest); text-decoration: none; }
+  nav.toc a:hover { color: var(--gold-dark); text-decoration: underline; }
+
+  section { margin-bottom: 52px; scroll-margin-top: 20px; }
+  section > h2 {
+    font-family: Georgia, serif; font-weight: 400; font-size: 26px;
+    color: var(--forest); margin: 0 0 6px;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  section > h2 .num {
+    font-size: 13px; color: var(--gold-dark); font-family: -apple-system, sans-serif;
+    letter-spacing: 0.1em; border: 1px solid var(--gold); border-radius: 50%;
+    width: 28px; height: 28px; display:inline-flex; align-items:center; justify-content:center;
+    flex-shrink: 0;
+  }
+  section > p.lead { color: var(--stone); margin: 0 0 18px; }
+  h3 { font-family: Georgia, serif; font-weight: 400; font-size: 18px; color: var(--charcoal); margin: 26px 0 8px; }
+
+  /* Step list */
+  ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 16px 0; }
+  ol.steps > li {
+    position: relative; padding: 14px 18px 14px 56px; margin-bottom: 12px;
+    background: #fff; border: 1px solid var(--sand); border-radius: 8px;
+  }
+  ol.steps > li::before {
+    counter-increment: step; content: counter(step);
+    position: absolute; left: 14px; top: 14px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--forest); color: #fff; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  ol.steps strong { color: var(--forest); }
+
+  ul.plain { padding-left: 20px; }
+  ul.plain li { margin-bottom: 8px; }
+
+  /* Callouts */
+  .note, .tip, .warn {
+    border-radius: 8px; padding: 14px 18px; margin: 18px 0;
+    font-size: 15px; border: 1px solid;
+  }
+  .note { background: #f3f6f4; border-color: #cfe0d6; }
+  .tip  { background: #fbf7ee; border-color: var(--sand); }
+  .warn { background: #fdf3f0; border-color: #f0cabd; }
+  .note b, .tip b, .warn b { display:block; margin-bottom: 3px; }
+  .tip b { color: var(--gold-dark); }
+  .note b { color: var(--forest); }
+  .warn b { color: #b4502f; }
+
+  /* Status chips */
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0; }
+  .chip {
+    font-size: 13px; padding: 4px 12px; border-radius: 999px; border:1px solid;
+  }
+  .chip.pending   { background:#fef6e7; color:#9a6a00; border-color:#f3dba0; }
+  .chip.confirmed { background:#eef7ee; color:#2f7a32; border-color:#bfe0c1; }
+  .chip.completed { background:#f1f0ec; color:#6c665b; border-color:#d8d2c4; }
+  .chip.cancelled { background:#fcecec; color:#b23b3b; border-color:#f0c4c4; }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 15px; background:#fff; }
+  table th, table td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--sand); }
+  table th { background: var(--cream); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--stone); }
+
+  kbd {
+    background: var(--forest); color:#fff; border-radius: 4px; padding: 1px 8px;
+    font-size: 13px; font-family: inherit;
+  }
+
+  footer.foot {
+    background: var(--forest); color: rgba(255,255,255,0.65);
+    text-align: center; padding: 30px 24px; font-size: 13px;
+  }
+  footer.foot a { color: var(--gold); text-decoration: none; }
+  a { color: var(--gold-dark); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <p class="kicker">Guide Client</p>
+  <h1 class="serif">Thai Head Spa Ajaccio</h1>
+  <p>Comment créer votre compte, réserver un soin en ligne et gérer vos rendez-vous, pas à pas.</p>
+  <div class="rule"><i></i><span>&#10022;</span><i></i></div>
+</header>
+
+<div class="wrap">
+  <nav class="toc">
+    <h2>Sommaire</h2>
+    <ol>
+      <li><a href="#decouvrir">Découvrir les soins</a></li>
+      <li><a href="#compte">Créer un compte</a></li>
+      <li><a href="#reserver">Réserver un soin</a></li>
+      <li><a href="#options">Choisir des options</a></li>
+      <li><a href="#telephone">Soins sur réservation téléphonique</a></li>
+      <li><a href="#mon-compte">Gérer mes rendez-vous</a></li>
+      <li><a href="#statuts">Comprendre les statuts</a></li>
+      <li><a href="#faq">Questions fréquentes</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="decouvrir">
+      <h2><span class="num">1</span> Découvrir les soins</h2>
+      <p class="lead">Toute la prestation commence sur la page <strong>Soins &amp; Massages</strong>.</p>
+      <ul class="plain">
+        <li>Depuis le menu en haut du site, cliquez sur <strong>Soins &amp; Massages</strong> (ou sur le bouton <strong>Réserver</strong>).</li>
+        <li>Les soins sont regroupés par <strong>catégorie</strong>. Utilisez les pastilles de filtre en haut de page (<em>Tous</em>, puis chaque catégorie) pour n'afficher qu'un type de soin.</li>
+        <li>Chaque carte de soin indique sa <strong>durée</strong>, son <strong>prix</strong>, une description et, le cas échéant, des <strong>options au choix</strong>.</li>
+      </ul>
+      <div class="note">
+        <b>Bon à savoir</b>
+        Tous les soins sont proposés <strong>sur rendez-vous uniquement</strong>. Vous pouvez réserver en ligne, ou par téléphone au <strong>06 07 94 96 63</strong>.
+      </div>
+    </section>
+
+    <section id="compte">
+      <h2><span class="num">2</span> Créer un compte</h2>
+      <p class="lead">Un compte vous permet de retrouver vos rendez-vous et de les annuler si besoin. Il n'est pas obligatoire pour réserver.</p>
+      <p>Vous pouvez créer votre compte à tout moment via <strong>Connexion &rsaquo; S'inscrire</strong>, ou directement pendant la réservation. Renseignez&nbsp;:</p>
+      <ul class="plain">
+        <li><strong>Prénom</strong> et <strong>Nom</strong></li>
+        <li><strong>Email</strong> (votre identifiant de connexion)</li>
+        <li><strong>Téléphone</strong></li>
+        <li><strong>Mot de passe</strong> — <strong>8 caractères minimum</strong></li>
+      </ul>
+      <div class="tip">
+        <b>Astuce</b>
+        Déjà inscrit ? Cliquez sur <strong>Connexion</strong> en haut du site et saisissez votre email et votre mot de passe. Une fois connecté, votre prénom s'affiche dans le menu et mène à votre espace personnel.
+      </div>
+    </section>
+
+    <section id="reserver">
+      <h2><span class="num">3</span> Réserver un soin</h2>
+      <p class="lead">La réservation se fait en deux étapes simples : le créneau, puis vos coordonnées.</p>
+      <ol class="steps">
+        <li>Sur la page <strong>Soins &amp; Massages</strong>, cliquez sur <strong>« Réserver ce soin »</strong> sous le soin de votre choix.</li>
+        <li><strong>Étape 1 — Créneau.</strong> Choisissez une <strong>date</strong> dans le calendrier, puis une <strong>heure</strong> parmi les créneaux disponibles affichés. Cliquez sur <kbd>Continuer &rarr;</kbd>.</li>
+        <li><strong>Étape 2 — Coordonnées.</strong> Indiquez comment vous souhaitez réserver (voir ci-dessous), ajoutez d'éventuelles <strong>notes</strong> (allergies, préférences…), puis cliquez sur <kbd>Confirmer la réservation</kbd>.</li>
+        <li>Une page de <strong>confirmation</strong> s'affiche. Votre rendez-vous est enregistré.</li>
+      </ol>
+
+      <h3>Trois façons de renseigner vos coordonnées</h3>
+      <table>
+        <tr><th>Option</th><th>Pour qui</th></tr>
+        <tr><td><strong>Créer un compte</strong></td><td>Nouveau client qui souhaite suivre ses rendez-vous (prénom, nom, email, téléphone, mot de passe).</td></tr>
+        <tr><td><strong>Connexion</strong></td><td>Client déjà inscrit — connectez-vous sans quitter la page, la réservation continue aussitôt.</td></tr>
+        <tr><td><strong>Sans compte</strong></td><td>Réservation rapide en invité (nom complet, téléphone, email) — sans création de compte.</td></tr>
+      </table>
+
+      <div class="note">
+        <b>À propos des dates et des horaires</b>
+        Le calendrier affiche le mois en cours et les mois suivants. Les <strong>jours de fermeture</strong> (dimanche, lundi, jours fériés et fermetures ponctuelles) ne sont pas sélectionnables. La <strong>réservation le jour même</strong> est possible : seuls les créneaux déjà passés sont masqués. Un créneau barré est déjà <strong>complet</strong>.
+      </div>
+    </section>
+
+    <section id="options">
+      <h2><span class="num">4</span> Choisir des options</h2>
+      <p class="lead">Certains soins proposent des <strong>options au choix</strong> (par exemple un type de massage complémentaire).</p>
+      <ul class="plain">
+        <li>Sur la carte du soin, cliquez sur les options souhaitées pour les <strong>sélectionner</strong> (vous pouvez en choisir plusieurs, ou aucune).</li>
+        <li>Vos options sont reportées automatiquement dans le récapitulatif de réservation.</li>
+        <li>Vous pouvez aussi ajuster vos options à l'<strong>Étape 1</strong> de la réservation, dans l'encadré récapitulatif du soin.</li>
+      </ul>
+    </section>
+
+    <section id="telephone">
+      <h2><span class="num">5</span> Soins sur réservation téléphonique</h2>
+      <p class="lead">Certaines catégories de soins ne sont pas réservables en ligne.</p>
+      <p>Pour ces soins, le bouton affiche <strong>« Réserver par téléphone »</strong> au lieu de « Réserver ce soin ». Cliquez dessus (ou appelez directement le <strong>06 07 94 96 63</strong>) pour convenir d'un rendez-vous avec le salon.</p>
+    </section>
+
+    <section id="mon-compte">
+      <h2><span class="num">6</span> Gérer mes rendez-vous</h2>
+      <p class="lead">Si vous avez un compte, votre espace <strong>Mon Compte</strong> centralise tous vos rendez-vous.</p>
+      <p>Connectez-vous, puis cliquez sur votre <strong>prénom</strong> en haut du site. Vous y trouvez&nbsp;:</p>
+      <ul class="plain">
+        <li><strong>Rendez-vous à venir</strong> — avec le soin, la date, l'heure, les options et le statut.</li>
+        <li><strong>Historique</strong> — vos rendez-vous passés, terminés ou annulés.</li>
+      </ul>
+      <h3>Annuler un rendez-vous</h3>
+      <p>Sur un rendez-vous <span class="chip pending">En attente</span> ou <span class="chip confirmed">Confirmé</span>, cliquez sur <strong>« Annuler »</strong> puis confirmez. Le créneau est aussitôt libéré pour d'autres clients.</p>
+      <div class="tip">
+        <b>Se déconnecter</b>
+        Le bouton <strong>Déconnexion</strong> se trouve en bas de la page « Mon Compte ».
+      </div>
+    </section>
+
+    <section id="statuts">
+      <h2><span class="num">7</span> Comprendre les statuts</h2>
+      <p class="lead">Chaque rendez-vous porte un statut, mis à jour par le salon.</p>
+      <div class="chips">
+        <span class="chip pending">En attente</span>
+        <span class="chip confirmed">Confirmé</span>
+        <span class="chip completed">Terminé</span>
+        <span class="chip cancelled">Annulé</span>
+      </div>
+      <table>
+        <tr><th>Statut</th><th>Signification</th></tr>
+        <tr><td><span class="chip pending">En attente</span></td><td>Votre demande est enregistrée et attend la confirmation du salon.</td></tr>
+        <tr><td><span class="chip confirmed">Confirmé</span></td><td>Le salon a validé votre rendez-vous.</td></tr>
+        <tr><td><span class="chip completed">Terminé</span></td><td>Le soin a eu lieu.</td></tr>
+        <tr><td><span class="chip cancelled">Annulé</span></td><td>Le rendez-vous a été annulé (par vous ou par le salon).</td></tr>
+      </table>
+    </section>
+
+    <section id="faq">
+      <h2><span class="num">8</span> Questions fréquentes</h2>
+
+      <h3>Dois-je créer un compte pour réserver ?</h3>
+      <p>Non. L'option <strong>« Sans compte »</strong> permet de réserver en invité. Un compte reste pratique pour retrouver et annuler vos rendez-vous.</p>
+
+      <h3>Puis-je réserver pour aujourd'hui ?</h3>
+      <p>Oui, tant qu'il reste des créneaux dont l'heure n'est pas déjà passée.</p>
+
+      <h3>Pourquoi un créneau est-il barré / indisponible ?</h3>
+      <p>Il est déjà complet : le nombre de places (lits) disponibles à cette heure est atteint. Choisissez un autre créneau ou une autre date.</p>
+
+      <h3>Pourquoi certaines dates ne sont-elles pas cliquables ?</h3>
+      <p>Le salon est fermé ce jour-là — repos hebdomadaire (dimanche / lundi), jour férié ou fermeture exceptionnelle.</p>
+
+      <h3>J'ai oublié mon mot de passe.</h3>
+      <p>Contactez le salon au <strong>06 07 94 96 63</strong> pour être aidé.</p>
+    </section>
+
+  </main>
+</div>
+
+<footer class="foot">
+  Thai Head Spa Ajaccio — 05 rue Comte Bacciochi, 20 000 Ajaccio · <a href="tel:+33607949663">06 07 94 96 63</a><br>
+  Mardi–Vendredi 9h–18h · Samedi 9h–17h · Sur rendez-vous uniquement
+</footer>
+
+</body>
+</html>

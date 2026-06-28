@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide Administrateur — Thai Head Spa Ajaccio</title>
+<style>
+  :root {
+    --forest: #1a3329;
+    --forest-light: #2c5040;
+    --gold: #b8924f;
+    --gold-dark: #9a7838;
+    --cream: #f7f4ee;
+    --sand: #e4ddcf;
+    --stone: #8a8275;
+    --charcoal: #2e2b26;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--charcoal);
+    background: var(--cream);
+    line-height: 1.65;
+  }
+  .serif { font-family: Georgia, "Times New Roman", serif; }
+
+  header.hero {
+    background: linear-gradient(rgba(26,51,41,0.93), rgba(26,51,41,0.97));
+    color: #fff; padding: 56px 24px 48px; text-align: center;
+  }
+  header.hero .kicker { font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+  header.hero h1 { font-family: Georgia, serif; font-weight: 400; font-size: clamp(28px, 5vw, 44px); margin: 0 0 8px; }
+  header.hero p { color: rgba(255,255,255,0.7); max-width: 600px; margin: 8px auto 0; }
+  .rule { display:flex; align-items:center; justify-content:center; gap:16px; margin:20px 0 0; }
+  .rule span { color: var(--gold); }
+  .rule i { display:block; width:54px; height:1px; background:rgba(255,255,255,0.25); }
+
+  .wrap { max-width: 940px; margin: 0 auto; padding: 0 24px; }
+  main { padding: 48px 0 80px; }
+
+  nav.toc {
+    background: #fff; border: 1px solid var(--sand); border-radius: 10px;
+    padding: 22px 26px; margin: -36px auto 44px; max-width: 760px;
+    box-shadow: 0 10px 30px rgba(26,51,41,0.08); position: relative;
+  }
+  nav.toc h2 { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-dark); margin: 0 0 14px; }
+  nav.toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 36px; }
+  nav.toc li { margin-bottom: 7px; break-inside: avoid; }
+  nav.toc a { color: var(--forest); text-decoration: none; }
+  nav.toc a:hover { color: var(--gold-dark); text-decoration: underline; }
+
+  section { margin-bottom: 54px; scroll-margin-top: 20px; }
+  section > h2 {
+    font-family: Georgia, serif; font-weight: 400; font-size: 26px; color: var(--forest);
+    margin: 0 0 6px; display: flex; align-items: baseline; gap: 12px;
+    border-bottom: 1px solid var(--sand); padding-bottom: 10px;
+  }
+  section > h2 .num {
+    font-size: 13px; color: var(--gold-dark); font-family: -apple-system, sans-serif; letter-spacing: 0.1em;
+    border: 1px solid var(--gold); border-radius: 50%; width: 28px; height: 28px;
+    display:inline-flex; align-items:center; justify-content:center; flex-shrink: 0;
+  }
+  section > p.lead { color: var(--stone); margin: 12px 0 18px; }
+  h3 { font-family: Georgia, serif; font-weight: 400; font-size: 19px; color: var(--charcoal); margin: 28px 0 8px; }
+
+  ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 16px 0; }
+  ol.steps > li {
+    position: relative; padding: 14px 18px 14px 56px; margin-bottom: 12px;
+    background: #fff; border: 1px solid var(--sand); border-radius: 8px;
+  }
+  ol.steps > li::before {
+    counter-increment: step; content: counter(step);
+    position: absolute; left: 14px; top: 14px; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--forest); color: #fff; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  ol.steps strong { color: var(--forest); }
+
+  ul.plain { padding-left: 20px; }
+  ul.plain li { margin-bottom: 9px; }
+  ul.plain b, ul.plain strong { color: var(--forest); }
+
+  .note, .tip, .warn {
+    border-radius: 8px; padding: 14px 18px; margin: 18px 0; font-size: 15px; border: 1px solid;
+  }
+  .note { background: #f3f6f4; border-color: #cfe0d6; }
+  .tip  { background: #fbf7ee; border-color: var(--sand); }
+  .warn { background: #fdf3f0; border-color: #f0cabd; }
+  .note b, .tip b, .warn b { display:block; margin-bottom: 3px; }
+  .tip b { color: var(--gold-dark); }
+  .note b { color: var(--forest); }
+  .warn b { color: #b4502f; }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 15px; background:#fff; }
+  table th, table td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--sand); vertical-align: top; }
+  table th { background: var(--cream); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--stone); }
+
+  kbd { background: var(--forest); color:#fff; border-radius: 4px; padding: 1px 8px; font-size: 13px; font-family: inherit; white-space: nowrap; }
+  code { background: var(--sand); border-radius: 4px; padding: 1px 6px; font-size: 13px; }
+
+  /* legend swatches mirroring the app calendars */
+  .legend { display:flex; flex-wrap:wrap; gap:14px; margin:14px 0; font-size: 14px; }
+  .legend span { display:inline-flex; align-items:center; gap:7px; }
+  .sw { width:16px; height:16px; border-radius:4px; border:1px solid; display:inline-block; }
+  .sw.free   { background:#fff; border-color:#d9d2c4; }
+  .sw.partial{ background:#eaf1fb; border-color:#9ec0ee; }
+  .sw.full   { background:#f1ecfa; border-color:#c3aee8; }
+  .sw.rest   { background:#efe9da; border-color:#d9cfba; }
+  .sw.closed { background:#fcecec; border-color:#eaa9a9; }
+  .sw.holiday{ background:#fdf3e0; border-color:#eccd8f; }
+  .sw.gold   { background:#f6edd8; border-color:#d8b873; }
+
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0; }
+  .chip { font-size: 13px; padding: 4px 12px; border-radius: 999px; border:1px solid; }
+  .chip.pending   { background:#fef6e7; color:#9a6a00; border-color:#f3dba0; }
+  .chip.confirmed { background:#eef7ee; color:#2f7a32; border-color:#bfe0c1; }
+  .chip.completed { background:#f1f0ec; color:#6c665b; border-color:#d8d2c4; }
+  .chip.cancelled { background:#fcecec; color:#b23b3b; border-color:#f0c4c4; }
+
+  footer.foot { background: var(--forest); color: rgba(255,255,255,0.65); text-align: center; padding: 30px 24px; font-size: 13px; }
+  footer.foot a { color: var(--gold); text-decoration: none; }
+  a { color: var(--gold-dark); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <p class="kicker">Guide Administrateur</p>
+  <h1 class="serif">Thai Head Spa Ajaccio</h1>
+  <p>Le tableau de bord d'administration en détail : réservations, clients, soins &amp; tarifs, disponibilités et contenu du site.</p>
+  <div class="rule"><i></i><span>&#10022;</span><i></i></div>
+</header>
+
+<div class="wrap">
+  <nav class="toc">
+    <h2>Sommaire</h2>
+    <ol>
+      <li><a href="#acces">Accès &amp; navigation</a></li>
+      <li><a href="#reservations">Réservations</a></li>
+      <li><a href="#clients">Clients</a></li>
+      <li><a href="#soins">Soins &amp; Tarifs</a></li>
+      <li><a href="#categories">Catégories</a></li>
+      <li><a href="#disponibilites">Disponibilités</a></li>
+      <li><a href="#contenu">Gestion de contenu</a></li>
+      <li><a href="#concepts">Concepts clés</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="acces">
+      <h2><span class="num">1</span> Accès &amp; navigation</h2>
+      <p class="lead">L'administration est réservée aux comptes disposant des droits administrateur.</p>
+      <ol class="steps">
+        <li>Connectez-vous via <strong>Connexion</strong> avec vos identifiants administrateur.</li>
+        <li>Accédez au tableau de bord à l'adresse <code>/admin</code> (ou via le lien <strong>Administration</strong> en bas du site).</li>
+      </ol>
+      <p>Le menu latéral (à gauche sur ordinateur, sous l'icône <kbd>&#9776;</kbd> sur mobile) donne accès à cinq sections&nbsp;:</p>
+      <table>
+        <tr><th>Section</th><th>Rôle</th></tr>
+        <tr><td><strong>Réservations</strong></td><td>Calendrier des rendez-vous et gestion de leur statut.</td></tr>
+        <tr><td><strong>Clients</strong></td><td>Fiches clients, historique et notes internes.</td></tr>
+        <tr><td><strong>Soins &amp; Tarifs</strong></td><td>Prestations, formules, prix, options et catégories.</td></tr>
+        <tr><td><strong>Gestion de contenu</strong></td><td>Textes affichés sur le site public.</td></tr>
+        <tr><td><strong>Disponibilités</strong></td><td>Horaires, capacité et calendrier des fermetures.</td></tr>
+      </table>
+      <div class="warn">
+        <b>Comptes administrateur = personnel</b>
+        Un compte administrateur ne peut pas effectuer de réservation client. Pour réserver en tant que client, déconnectez-vous et utilisez un compte client (ou le mode invité).
+      </div>
+    </section>
+
+    <section id="reservations">
+      <h2><span class="num">2</span> Réservations</h2>
+      <p class="lead">C'est l'écran d'accueil de l'administration. Il s'ouvre toujours sur la journée du jour.</p>
+
+      <h3>Le calendrier</h3>
+      <p>Chaque jour est coloré selon son état. Cliquez sur un jour pour afficher le détail de ses réservations en dessous.</p>
+      <div class="legend">
+        <span><i class="sw free"></i> Rien de réservé</span>
+        <span><i class="sw partial"></i> Partiellement réservé</span>
+        <span><i class="sw full"></i> Complet</span>
+        <span><i class="sw rest"></i> Repos hebdo</span>
+        <span><i class="sw closed"></i> Fermeture</span>
+        <span><i class="sw holiday"></i> Jour férié</span>
+      </div>
+      <p>Un bandeau en haut de page indique le nombre de <strong>rendez-vous restants aujourd'hui</strong> (créneaux encore à venir dans la journée).</p>
+
+      <h3>Détail d'une journée &amp; changement de statut</h3>
+      <p>Sous le calendrier, chaque réservation du jour sélectionné affiche l'heure, le client (ou l'invité), le soin, les options choisies, le prix et le statut. Pour faire évoluer un rendez-vous&nbsp;:</p>
+      <ol class="steps">
+        <li>Choisissez le nouveau statut dans le menu déroulant&nbsp;: <em>En attente</em>, <em>Confirmer</em>, <em>Terminé</em> ou <em>Annuler</em>.</li>
+        <li>Cliquez sur <kbd>OK</kbd> pour enregistrer.</li>
+      </ol>
+      <div class="chips">
+        <span class="chip pending">En attente</span>
+        <span class="chip confirmed">Confirmé</span>
+        <span class="chip completed">Terminé</span>
+        <span class="chip cancelled">Annulé</span>
+      </div>
+      <div class="note">
+        <b>Impact sur les disponibilités</b>
+        Les statuts <strong>En attente</strong> et <strong>Confirmé</strong> occupent un (ou plusieurs) lit(s) et bloquent le créneau côté client. Passer un rendez-vous en <strong>Annulé</strong> libère immédiatement la place.
+      </div>
+    </section>
+
+    <section id="clients">
+      <h2><span class="num">3</span> Clients</h2>
+      <p class="lead">La liste de tous les clients enregistrés, avec recherche et fiche détaillée.</p>
+      <ul class="plain">
+        <li>Utilisez le champ <strong>Rechercher</strong> pour filtrer par nom, email ou téléphone.</li>
+        <li>La liste affiche, pour chaque client&nbsp;: contact, date d'inscription, nombre de réservations, dernière visite et <strong>total dépensé</strong>.</li>
+        <li>Cliquez sur une ligne (ou <strong>Dossier &rarr;</strong>) pour ouvrir la fiche complète.</li>
+      </ul>
+
+      <h3>La fiche client</h3>
+      <ul class="plain">
+        <li><strong>Statistiques</strong> — réservations totales, terminées, à venir, et total dépensé.</li>
+        <li><strong>Historique des réservations</strong> — tous les rendez-vous du client avec soin, date, heure, prix et statut.</li>
+        <li><strong>Notes internes</strong> — préférences, allergies, remarques. <em>Visibles uniquement par l'équipe.</em> Saisissez le texte puis cliquez sur <kbd>Enregistrer</kbd>.</li>
+      </ul>
+    </section>
+
+    <section id="soins">
+      <h2><span class="num">4</span> Soins &amp; Tarifs</h2>
+      <p class="lead">Gérez ici toutes les prestations et formules proposées au catalogue.</p>
+
+      <h3>Ajouter une prestation</h3>
+      <ol class="steps">
+        <li>Cliquez sur <kbd>+ Nouvelle prestation</kbd>.</li>
+        <li>Renseignez les champs (voir le tableau ci-dessous), puis cliquez sur <kbd>Créer la prestation</kbd>.</li>
+      </ol>
+
+      <h3>Modifier ou supprimer</h3>
+      <ul class="plain">
+        <li>Cliquez sur <kbd>Modifier</kbd> sur une prestation pour déplier son formulaire, ajustez, puis <kbd>Sauvegarder</kbd>.</li>
+        <li>Le bouton <kbd>Supprimer</kbd> retire définitivement la prestation (confirmation demandée).</li>
+        <li>Décochez <strong>Actif</strong> pour <strong>masquer</strong> un soin du site sans le supprimer.</li>
+        <li>Le menu latéral permet de filtrer la liste par <strong>catégorie</strong>.</li>
+      </ul>
+
+      <table>
+        <tr><th>Champ</th><th>Description</th></tr>
+        <tr><td><strong>Nom</strong></td><td>Intitulé du soin affiché sur le site.</td></tr>
+        <tr><td><strong>Catégorie</strong></td><td>Regroupement du soin (gérées dans l'écran <a href="#categories">Catégories</a>).</td></tr>
+        <tr><td><strong>Durée (min)</strong></td><td>Durée de la séance, par pas de 15 min.</td></tr>
+        <tr><td><strong>Prix (€)</strong></td><td>Tarif affiché et facturé.</td></tr>
+        <tr><td><strong>Lits occupés</strong></td><td>Nombre de lits/tables que le soin mobilise simultanément (voir <a href="#concepts">Concepts clés</a>).</td></tr>
+        <tr><td><strong>Préparation (min)</strong></td><td>Temps de remise en état du studio après le soin, avant le client suivant.</td></tr>
+        <tr><td><strong>Description courte</strong></td><td>Phrase d'accroche sur la carte du soin.</td></tr>
+        <tr><td><strong>Description détaillée</strong></td><td>Texte plus long affiché sous la description courte.</td></tr>
+        <tr><td><strong>Options au choix</strong></td><td>Une option par ligne. Elles s'affichent comme des choix sélectionnables lors de la réservation.</td></tr>
+        <tr><td><strong>Actif</strong></td><td>Coché = visible sur le site ; décoché = masqué.</td></tr>
+      </table>
+    </section>
+
+    <section id="categories">
+      <h2><span class="num">5</span> Catégories</h2>
+      <p class="lead">Les catégories regroupent les soins sur le site et dans le tunnel de réservation. Accès via <strong>Soins &amp; Tarifs &rsaquo; Catégories</strong>.</p>
+      <ul class="plain">
+        <li><strong>Créer</strong> — saisissez un nom dans « Nouvelle catégorie » et cliquez sur <kbd>+ Ajouter</kbd>.</li>
+        <li><strong>Renommer</strong> — modifiez le nom puis cliquez sur <kbd>Renommer</kbd>.</li>
+        <li><strong>Supprimer</strong> — possible uniquement si <em>aucun soin</em> n'utilise la catégorie. Le nombre de soins est indiqué à côté de chaque catégorie.</li>
+        <li><strong>Réservation tél. uniquement</strong> — cochez cette case pour qu'une catégorie ne soit <em>pas</em> réservable en ligne&nbsp;: le site affiche alors un bouton <strong>« Réserver par téléphone »</strong> à la place.</li>
+      </ul>
+    </section>
+
+    <section id="disponibilites">
+      <h2><span class="num">6</span> Disponibilités</h2>
+      <p class="lead">Trois réglages déterminent quand et combien de clients peuvent réserver : le calendrier des fermetures, la capacité, et les horaires hebdomadaires.</p>
+
+      <h3>Calendrier des fermetures</h3>
+      <p>Cliquez sur un jour pour ouvrir son éditeur. Vous pouvez alors&nbsp;:</p>
+      <ul class="plain">
+        <li><strong>Fermer / rouvrir toute la journée</strong> — bouton dédié dans l'éditeur.</li>
+        <li><strong>Réserver des créneaux précis</strong> — touchez des créneaux de 30 min pour les rendre indisponibles (par ex. une pause), puis <kbd>Enregistrer et fermer</kbd>. Tant que vous n'enregistrez pas, un message « Modifications non enregistrées » vous le rappelle.</li>
+      </ul>
+      <div class="legend">
+        <span><i class="sw free"></i> Ouvert</span>
+        <span><i class="sw rest"></i> Repos hebdo</span>
+        <span><i class="sw gold"></i> Partiellement réservé</span>
+        <span><i class="sw closed"></i> Fermeture</span>
+        <span><i class="sw holiday"></i> Jour férié</span>
+      </div>
+      <div class="tip">
+        <b>Jours fériés</b>
+        Tous les jours fériés français sont <strong>fermés par défaut</strong>. Vous pouvez les rouvrir manuellement si vous travaillez ce jour-là.
+      </div>
+
+      <h3>Capacité</h3>
+      <p>Définissez le nombre de <strong>lits/tables</strong> pouvant être occupés simultanément, puis <kbd>Sauvegarder</kbd>. Cette valeur, combinée aux « lits occupés » de chaque soin, détermine combien de réservations peuvent coexister sur un même créneau.</p>
+
+      <h3>Horaires hebdomadaires</h3>
+      <ul class="plain">
+        <li>Pour chaque jour travaillé, réglez l'heure d'<strong>Ouverture</strong> et de <strong>Fermeture</strong>, cochez/décochez <strong>Actif</strong>, puis <kbd>Sauvegarder</kbd>.</li>
+        <li><strong>Retirer ce jour</strong> le sort des jours travaillés (il devient « repos hebdo »).</li>
+        <li><strong>+ Ajouter ce jour</strong> permet d'inclure un nouveau jour de la semaine avec ses horaires.</li>
+      </ul>
+      <div class="note">
+        <b>Enregistrement</b>
+        Chaque sauvegarde affiche une confirmation en bas à droite de l'écran (par ex. « Horaires enregistrés »). Vos saisies sont conservées telles quelles, sans rechargement de page.
+      </div>
+    </section>
+
+    <section id="contenu">
+      <h2><span class="num">7</span> Gestion de contenu</h2>
+      <p class="lead">Modifiez les textes affichés sur le site public, sans toucher au code.</p>
+      <p>Chaque bloc correspond à un texte du site. Modifiez le champ puis cliquez sur <kbd>Sauvegarder</kbd> ; un message « Sauvegardé avec succès » confirme l'enregistrement. Champs disponibles&nbsp;:</p>
+      <table>
+        <tr><th>Texte</th><th>Emplacement sur le site</th></tr>
+        <tr><td>Titre principal / Sous-titre / Tagline (Hero)</td><td>Bannière de la page d'accueil.</td></tr>
+        <tr><td>Titre &amp; corps « À Propos »</td><td>Section À Propos (paragraphes séparés par une ligne vide).</td></tr>
+        <tr><td>Adresse, Téléphone, Horaires, Email de contact</td><td>Coordonnées affichées sur le site.</td></tr>
+        <tr><td>Avis de fermeture</td><td>Message ponctuel (congés, fermeture exceptionnelle…).</td></tr>
+      </table>
+    </section>
+
+    <section id="concepts">
+      <h2><span class="num">8</span> Concepts clés</h2>
+      <p class="lead">Comprendre comment les disponibilités sont calculées vous aide à bien paramétrer le salon.</p>
+
+      <h3>Réservation à la capacité (lits)</h3>
+      <p>Le salon possède un nombre total de <strong>lits</strong> (réglé dans <a href="#disponibilites">Disponibilités &rsaquo; Capacité</a>). Chaque soin déclare combien de lits il occupe. Un créneau reste proposé aux clients <strong>tant qu'il reste des lits libres</strong> à cette heure. Exemple&nbsp;: avec 3 lits, un soin occupant 1 lit peut être réservé jusqu'à 3 fois sur le même créneau.</p>
+
+      <h3>Temps de préparation</h3>
+      <p>Le champ <strong>Préparation (min)</strong> d'un soin bloque le lit après la fin de la séance, le temps de remettre le studio en état, avant de proposer le créneau suivant.</p>
+
+      <h3>Ce qui rend un créneau indisponible côté client</h3>
+      <ul class="plain">
+        <li>Le jour est <strong>fermé</strong> (fermeture manuelle ou jour férié).</li>
+        <li>Le jour est un <strong>repos hebdomadaire</strong> (non listé dans les horaires).</li>
+        <li>Tous les <strong>lits sont occupés</strong> par des réservations en attente/confirmées.</li>
+        <li>Le créneau a été <strong>réservé manuellement</strong> dans l'éditeur de fermetures.</li>
+        <li>Pour le jour même, l'heure du créneau est <strong>déjà passée</strong>.</li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<footer class="foot">
+  Thai Head Spa Ajaccio — Administration · <a href="tel:+33607949663">06 07 94 96 63</a><br>
+  05 rue Comte Bacciochi, 20 000 Ajaccio
+</footer>
+
+</body>
+</html>
