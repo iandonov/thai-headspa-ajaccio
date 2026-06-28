@@ -1,7 +1,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db/index';
-import { availability, bookings, services, closures, settings } from '$lib/server/db/schema';
+import { availability, bookings, services, closures, settings, slotBlocks } from '$lib/server/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { computeSlots, toMin, blockUntilNextSlot } from '$lib/server/availability';
 
@@ -56,7 +56,14 @@ export const GET: RequestHandler = async ({ url }) => {
 		beds: b.beds ?? 1,
 	}));
 
-	const slots = computeSlots({
+	// Admin-reserved hour ranges for this date occupy the full capacity, so any
+	// candidate slot overlapping one is reported unavailable.
+	const blocks = db.select().from(slotBlocks).where(eq(slotBlocks.date, dateStr)).all();
+	for (const b of blocks) {
+		intervals.push({ s: toMin(b.startTime), e: toMin(b.endTime), beds: totalBeds });
+	}
+
+	let slots = computeSlots({
 		availStartMin: toMin(avail.startTime),
 		availEndMin: toMin(avail.endTime),
 		durationMin: service.duration,
@@ -65,6 +72,15 @@ export const GET: RequestHandler = async ({ url }) => {
 		existing: intervals,
 		bufferMin: service.bufferMinutes ?? 0,
 	});
+
+	// Same-day booking: drop slots whose start has already passed.
+	const now = new Date();
+	const pad = (n: number) => String(n).padStart(2, '0');
+	const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+	if (dateStr === todayStr) {
+		const nowMin = now.getHours() * 60 + now.getMinutes();
+		slots = slots.filter((s) => toMin(s.time) > nowMin);
+	}
 
 	return json({ slots });
 };

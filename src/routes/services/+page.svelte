@@ -10,10 +10,17 @@
 		return h + 'h' + (m ? m + 'min' : '');
 	}
 
+	// Spa phone number for phone-only categories (matches the notice below).
+	const PHONE = '06 07 94 96 63';
+	const PHONE_HREF = 'tel:+33607949663';
+
 	// Categories come from the DB (admin-editable), in their configured order.
 	const categories = $derived(
 		Object.fromEntries(data.categories.map((c) => [c.slug, c.name])) as Record<string, string>
 	);
+
+	// Categories flagged "phone only" can't be booked online — show a call CTA.
+	const phoneOnlyCats = $derived(new Set(data.categories.filter((c) => c.phoneOnly).map((c) => c.slug)));
 
 	function parseOptions(raw: string | null): string[] {
 		if (!raw) return [];
@@ -48,14 +55,14 @@
 		selectedCat ? orderedGroups.filter(([c]) => c === selectedCat) : orderedGroups
 	);
 
-	// Selectable options per service card (multi-select, all selected by default);
-	// the choices ride along to /reservation.
+	// Selectable options per service card (multi-select, none selected by default);
+	// the choices the visitor picks ride along to /reservation.
 	let chosenOptions = $state<Record<number, string[]>>({});
 
 	type ServiceRow = { id: number; options: string | null };
 
 	function optionsFor(service: ServiceRow): string[] {
-		return chosenOptions[service.id] ?? parseOptions(service.options);
+		return chosenOptions[service.id] ?? [];
 	}
 
 	function toggleOption(service: ServiceRow, opt: string) {
@@ -139,6 +146,7 @@
 
 				<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 					{#each services as service}
+						{@const phoneOnly = phoneOnlyCats.has(service.category)}
 						<div id={service.slug} class="glass-card rounded-(--radius-card) overflow-hidden flex flex-col group">
 							<div class="h-1.5 bg-gradient-to-r from-(--color-forest) to-(--color-gold)"></div>
 							<div class="p-8 flex-1 flex flex-col">
@@ -155,7 +163,7 @@
 								{#if service.longDescription}
 									<p class="font-sans text-sm text-(--color-stone) leading-relaxed flex-1">{service.longDescription}</p>
 								{/if}
-								{#if parseOptions(service.options).length > 0}
+								{#if !phoneOnly && parseOptions(service.options).length > 0}
 									{@const opts = parseOptions(service.options)}
 									<div class="mt-4">
 										<p class="font-sans text-[0.7rem] tracking-widest uppercase text-(--color-gold) mb-2">Options au choix</p>
@@ -175,9 +183,18 @@
 									</div>
 								{/if}
 								<div class="mt-6 pt-6 border-t border-(--color-sand)">
-									<a href={reserveHref(service)} class="btn-primary w-full justify-center text-xs py-3">
-										Réserver ce soin
-									</a>
+									{#if phoneOnly}
+										<a href={PHONE_HREF} class="btn-primary w-full justify-center text-xs py-3">
+											Réserver par téléphone
+										</a>
+										<p class="font-sans text-xs text-(--color-stone) text-center mt-2">
+											Sur réservation téléphonique — {PHONE}
+										</p>
+									{:else}
+										<a href={reserveHref(service)} class="btn-primary w-full justify-center text-xs py-3">
+											Réserver ce soin
+										</a>
+									{/if}
 								</div>
 							</div>
 						</div>

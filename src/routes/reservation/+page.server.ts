@@ -1,7 +1,7 @@
 import type { Actions, PageServerLoad } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db/index';
-import { services, bookings, availability, users, closures, settings, categories } from '$lib/server/db/schema';
+import { services, bookings, availability, users, closures, settings, categories, slotBlocks } from '$lib/server/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { verifyPassword, hashPassword, createToken } from '$lib/server/auth';
 import { hasCapacity, toMin, blockUntilNextSlot } from '$lib/server/availability';
@@ -26,13 +26,21 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	// The wizard now starts at the date step — a soin must already be chosen on
 	// the /services page. Without a valid active service, send the visitor there.
 	const serviceId = preselectedId ? Number(preselectedId) : null;
-	if (!serviceId || !allServices.some((s) => s.id === serviceId)) {
+	const chosen = serviceId ? allServices.find((s) => s.id === serviceId) : null;
+	if (!chosen) {
+		redirect(302, '/services');
+	}
+
+	// Phone-only categories aren't reservable online — bounce back to /services
+	// (which shows the "call to book" CTA for these soins).
+	const allCategories = db.select().from(categories).orderBy(categories.sortOrder).all();
+	if (allCategories.find((c) => c.slug === chosen.category)?.phoneOnly) {
 		redirect(302, '/services');
 	}
 
 	return {
 		services: allServices,
-		categories: db.select().from(categories).orderBy(categories.sortOrder).all(),
+		categories: allCategories,
 		user: locals.user,
 		preselectedServiceId: serviceId,
 		preselectedOptions,
@@ -70,7 +78,7 @@ export const actions: Actions = {
 		const phone = String(data.get('phone') || '').trim();
 		const password = String(data.get('password') || '');
 
-		if (!firstName || !lastName || !email || !password) {
+		if (!firstName || !lastName || !email || !phone || !password) {
 			return fail(400, { authError: 'Veuillez remplir tous les champs obligatoires.' });
 		}
 		if (password.length < 8) {
@@ -88,7 +96,7 @@ export const actions: Actions = {
 			passwordHash,
 			firstName,
 			lastName,
-			phone: phone || null,
+			phone,
 			role: 'client',
 			createdAt: new Date(),
 		}).run();
@@ -119,16 +127,33 @@ export const actions: Actions = {
 		if (!serviceId || !date || !startTime) {
 			return fail(400, { error: 'Veuillez sélectionner un soin, une date et un créneau.' });
 		}
-		if (!locals.user && (!guestName || !guestEmail)) {
-			return fail(400, { error: 'Veuillez indiquer votre nom et email.' });
+		if (!locals.user && (!guestName || !guestEmail || !guestPhone)) {
+			return fail(400, { error: 'Veuillez indiquer votre nom, email et téléphone.' });
 		}
 
 		const [service] = db.select().from(services).where(eq(services.id, serviceId)).all();
 		if (!service) return fail(400, { error: 'Soin introuvable.' });
 
+		// Phone-only categories are not bookable online.
+		const [category] = db.select().from(categories).where(eq(categories.slug, service.category)).all();
+		if (category?.phoneOnly) {
+			return fail(400, { error: 'Ce soin est réservable uniquement par téléphone.' });
+		}
+
 		const [sh, sm] = startTime.split(':').map(Number);
 		const endMinutes = sh * 60 + sm + service.duration;
 		const endTime = `${Math.floor(endMinutes/60).toString().padStart(2,'0')}:${(endMinutes%60).toString().padStart(2,'0')}`;
+
+		// Same-day booking is allowed, but the chosen time must still be in the future.
+		const now = new Date();
+		const pad2 = (n: number) => String(n).padStart(2, '0');
+		const todayStr = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+		if (date < todayStr) {
+			return fail(400, { error: 'Cette date est déjà passée.' });
+		}
+		if (date === todayStr && (sh * 60 + sm) <= now.getHours() * 60 + now.getMinutes()) {
+			return fail(400, { error: 'Ce créneau est déjà passé. Veuillez en choisir un autre.' });
+		}
 
 		// Date-specific closure (public holiday or manual) → no bookings allowed.
 		const [closure] = db.select().from(closures).where(eq(closures.date, date)).all();
@@ -166,6 +191,13 @@ export const actions: Actions = {
 			e: blockUntilNextSlot(toMin(b.endTime) + (b.bufferMinutes ?? 0), gridStart),
 			beds: b.beds ?? 1,
 		}));
+
+		// Admin-reserved hour ranges for this date occupy the full capacity, so a
+		// booking overlapping one is rejected just like a sold-out window.
+		const blocks = db.select().from(slotBlocks).where(eq(slotBlocks.date, date)).all();
+		for (const b of blocks) {
+			intervals.push({ s: toMin(b.startTime), e: toMin(b.endTime), beds: totalBeds });
+		}
 
 		// Reject if no bed is free for this prestation during the chosen window.
 		const occupiedEnd = blockUntilNextSlot(endMinutes + (service.bufferMinutes ?? 0), gridStart);

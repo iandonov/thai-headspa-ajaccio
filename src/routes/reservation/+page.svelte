@@ -10,12 +10,9 @@
 	// that preselection once. untrack makes the intentional one-time read of the
 	// reactive `data` prop explicit (and silences the warning).
 	let selectedServiceId = $state(untrack(() => data.preselectedServiceId ?? null));
-	// All options start selected; URL params (from the services page) narrow them down.
-	let selectedOptions = $state<string[]>(untrack(() => {
-		if (data.preselectedOptions.length > 0) return data.preselectedOptions;
-		const svc = data.services.find((s) => s.id === data.preselectedServiceId);
-		return parseOptions(svc?.options ?? null);
-	}));
+	// Options start unselected; only those the visitor explicitly chose on the
+	// /services page (passed as URL params) are pre-selected. A click adds one.
+	let selectedOptions = $state<string[]>(untrack(() => data.preselectedOptions));
 	let selectedDate = $state('');
 	let selectedSlot = $state('');
 	let loadingSlots = $state(false);
@@ -66,12 +63,13 @@
 			: [...selectedOptions, opt];
 	}
 
-	// Compute min date (tomorrow), using local components to avoid UTC drift.
+	// Compute min date (today — same-day booking is allowed), using local
+	// components to avoid UTC drift. Past time slots for today are filtered
+	// server-side by the slots API.
 	const today = new Date();
 	const pad = (n: number) => String(n).padStart(2, '0');
 	const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-	const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-	const minDate = fmt(tomorrow);
+	const minDate = fmt(today);
 
 	// Generate full calendar months (current + next 2) so each month grid is
 	// complete. Past days and Sundays/Mondays are rendered but not selectable.
@@ -479,8 +477,8 @@
 										<input id="reg-email" name="email" type="email" required autocomplete="email" class="input-field" placeholder="votre@email.fr" />
 									</div>
 									<div>
-										<label for="reg-phone" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Téléphone</label>
-										<input id="reg-phone" name="phone" type="tel" class="input-field" placeholder="06 00 00 00 00" />
+										<label for="reg-phone" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Téléphone *</label>
+										<input id="reg-phone" name="phone" type="tel" required autocomplete="tel" class="input-field" placeholder="06 00 00 00 00" />
 									</div>
 								</div>
 								<div>
@@ -504,8 +502,8 @@
 										<input id="guest-name" name="guestName" type="text" required class="input-field" placeholder="Marie Dupont" />
 									</div>
 									<div>
-										<label for="guest-phone" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Téléphone</label>
-										<input id="guest-phone" name="guestPhone" type="tel" class="input-field" placeholder="06 00 00 00 00" />
+										<label for="guest-phone" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Téléphone *</label>
+										<input id="guest-phone" name="guestPhone" type="tel" required autocomplete="tel" class="input-field" placeholder="06 00 00 00 00" />
 									</div>
 								</div>
 								<div>

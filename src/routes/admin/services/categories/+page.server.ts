@@ -62,6 +62,16 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
+	// Toggle whether a category is reservable online or by phone only.
+	setPhoneOnly: async ({ request }: RequestEvent) => {
+		const data = await request.formData();
+		const id = Number(data.get('id'));
+		if (!id) return fail(400);
+		const phoneOnly = data.get('phoneOnly') === 'on';
+		db.update(categories).set({ phoneOnly }).where(eq(categories.id, id)).run();
+		return { success: true };
+	},
+
 	delete: async ({ request }: RequestEvent) => {
 		const data = await request.formData();
 		const id = Number(data.get('id'));

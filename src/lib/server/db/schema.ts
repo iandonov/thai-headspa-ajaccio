@@ -19,6 +19,9 @@ export const categories = sqliteTable('categories', {
 	slug: text('slug').notNull().unique(),
 	name: text('name').notNull(),
 	sortOrder: integer('sort_order').notNull().default(0),
+	// When true, services in this category can't be booked online — the site
+	// shows a "call to book" CTA instead and the reservation flow is blocked.
+	phoneOnly: integer('phone_only', { mode: 'boolean' }).notNull().default(false),
 });
 
 export const services = sqliteTable('services', {
@@ -70,6 +73,17 @@ export const closures = sqliteTable('closures', {
 	date: text('date').notNull().unique(), // "YYYY-MM-DD"
 	reason: text('reason'),
 	isHoliday: integer('is_holiday', { mode: 'boolean' }).notNull().default(false),
+});
+
+// Date-specific blocked time ranges. Unlike `closures` (which shut a whole day),
+// each row reserves a single slot window on one date so the admin can keep a day
+// open while marking individual hours unbookable. A blocked range consumes the
+// full bed capacity for [startTime, endTime), so no booking can overlap it.
+export const slotBlocks = sqliteTable('slot_blocks', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	date: text('date').notNull(),            // "YYYY-MM-DD"
+	startTime: text('start_time').notNull(), // "HH:MM"
+	endTime: text('end_time').notNull(),     // "HH:MM"
 });
 
 // Simple key/value store for spa-wide settings (e.g. total_beds capacity).

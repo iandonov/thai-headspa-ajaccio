@@ -33,6 +33,15 @@
 						Renommer
 					</button>
 				</form>
+				<form method="POST" action="?/setPhoneOnly" use:enhance class="flex items-center">
+					<input type="hidden" name="id" value={cat.id} />
+					<label class="flex items-center gap-1.5 font-sans text-xs text-(--color-stone) cursor-pointer whitespace-nowrap" title="Les soins de cette catégorie ne sont pas réservables en ligne : un bouton « réserver par téléphone » est affiché à la place.">
+						<input type="checkbox" name="phoneOnly" checked={cat.phoneOnly}
+							onchange={(e) => e.currentTarget.form?.requestSubmit()}
+							class="accent-(--color-forest) w-4 h-4" />
+						Réservation tél. uniquement
+					</label>
+				</form>
 				<form method="POST" action="?/delete" use:enhance
 					onsubmit={(e) => { if (!confirm(`Supprimer la catégorie « ${cat.name} » ?`)) e.preventDefault(); }}>
 					<input type="hidden" name="id" value={cat.id} />

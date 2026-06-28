@@ -27,6 +27,7 @@
 [CmdletBinding()]
 param(
   [switch]$Fast,
+  [switch]$Package,      # build the prebuilt artifact to deploy.zip and STOP (upload it yourself via Kudu ZipDeploy). No Azure calls.
   [switch]$DeviceCode,   # use 'az login --use-device-code' (headless / no local browser)
   [string]$Tenant        = '902f14f8-6c86-4d31-9e56-c3715eeca530',   # tenant that owns $Subscription (enforces MFA)
   [string]$App           = 'thai-headspa-ajaccio',
@@ -76,11 +77,37 @@ function Get-KuduHeader {
   return @{ Authorization = "Bearer $t" }
 }
 
-# Poll the Kudu deployment status until it finishes. Returns $true only on a
-# genuine success (status 4). This is the source of truth: `az webapp deploy`
-# routinely returns a 502/504 because the gateway drops the synchronous wait
-# while the build runs on — but the deployment itself keeps going server-side.
-function Wait-DeploymentComplete([int]$TimeoutSec) {
+# Read the id of the most recent Kudu deployment (null if none / unreachable).
+# Captured before a deploy so we can tell a NEW deployment from the previous one
+# and never mistake a stale "success" for ours.
+function Get-LatestDeploymentId {
+  try {
+    $headers = Get-KuduHeader
+    $r = Invoke-WebRequest -Uri "$ScmBase/api/deployments/latest" -Headers $headers -TimeoutSec 30 -SkipHttpErrorCheck
+    if ($r.StatusCode -eq 200) { return ($r.Content | ConvertFrom-Json).id }
+  } catch { }
+  return $null
+}
+
+# Upload the zip straight to the Kudu publish (OneDeploy) API from PowerShell.
+# PowerShell's HTTP stack uses the Windows certificate store, so it works behind
+# a TLS-intercepting corporate proxy that breaks the az CLI (Python/requests:
+# SSL CERTIFICATE_VERIFY_FAILED). Same endpoint/params `az webapp deploy` uses.
+function Push-ZipViaKudu {
+  $headers = Get-KuduHeader
+  $headers['Content-Type'] = 'application/zip'
+  $uri = "$ScmBase/api/publish?type=zip&async=true&clean=true"
+  Write-Host 'Uploading via Kudu publish API (PowerShell TLS)...'
+  Invoke-RestMethod -Uri $uri -Method Post -Headers $headers -InFile $Zip -TimeoutSec 600 | Out-Null
+}
+
+# Poll the Kudu deployment status until OUR deployment finishes. Returns $true
+# only on a genuine success (status 4) of a deployment newer than $PrevId — so a
+# failed upload that leaves the previous (already-complete) deployment as "latest"
+# can never be misread as success. `az webapp deploy` routinely returns a 502/504
+# because the gateway drops the synchronous wait while the build runs on, but the
+# deployment itself keeps going server-side; this is the real source of truth.
+function Wait-DeploymentComplete([int]$TimeoutSec, [string]$PrevId) {
   $headers = Get-KuduHeader
   $deadline = (Get-Date).AddSeconds($TimeoutSec)
   $lastProgress = ''
@@ -89,12 +116,17 @@ function Wait-DeploymentComplete([int]$TimeoutSec) {
       $r = Invoke-WebRequest -Uri "$ScmBase/api/deployments/latest" -Headers $headers -TimeoutSec 30 -SkipHttpErrorCheck
       if ($r.StatusCode -eq 200) {
         $d = $r.Content | ConvertFrom-Json
-        if ($d.progress -and $d.progress -ne $lastProgress) { Write-Host "  $($d.progress)"; $lastProgress = $d.progress }
-        if ($d.complete) {
-          # Kudu DeployStatus: 4 = Success, 3 = Failed.
-          if ($d.status -eq 4) { Write-Host '  Deployment completed successfully.'; return $true }
-          Write-Host "  Deployment FAILED (status $($d.status))."
-          return $false
+        if ($PrevId -and $d.id -eq $PrevId) {
+          # Still the pre-deploy deployment — ours hasn't registered yet.
+          Write-Host '  waiting for the new deployment to register...'
+        } else {
+          if ($d.progress -and $d.progress -ne $lastProgress) { Write-Host "  $($d.progress)"; $lastProgress = $d.progress }
+          if ($d.complete) {
+            # Kudu DeployStatus: 4 = Success, 3 = Failed.
+            if ($d.status -eq 4) { Write-Host '  Deployment completed successfully.'; return $true }
+            Write-Host "  Deployment FAILED (status $($d.status))."
+            return $false
+          }
         }
       } elseif ($r.StatusCode -in 401, 403) {
         throw "Kudu rejected the credentials (HTTP $($r.StatusCode))."
@@ -110,15 +142,18 @@ function Wait-DeploymentComplete([int]$TimeoutSec) {
 
 # Push the zip ASYNCHRONOUSLY: the CLI returns as soon as the artifact is
 # uploaded, so a slow Oryx build (reliable) or a large artifact (fast) can't trip
-# the gateway's ~230s synchronous timeout. We then confirm completion against the
-# real Kudu status. Returns $true only when the deployment genuinely succeeded.
+# the gateway's ~230s synchronous timeout. If the az upload fails outright (e.g. a
+# TLS-intercepting proxy), retry the upload from PowerShell. We then confirm a NEW
+# deployment genuinely succeeded. Returns $true only on real success.
 function Invoke-Deploy([int]$BuildTimeoutSec) {
+  $prevId = Get-LatestDeploymentId
   az webapp deploy -n $App -g $ResourceGroup --src-path $Zip --type zip `
     --clean true --async true --track-status false | Out-Null
   if ($LASTEXITCODE -ne 0) {
-    Write-Warning "az webapp deploy exit $LASTEXITCODE (usually a gateway timeout on the upload response) — verifying server-side status..."
+    Write-Warning "az webapp deploy exit $LASTEXITCODE — retrying upload via the Kudu publish API (handles TLS-intercepting proxies / gateway timeouts)..."
+    try { Push-ZipViaKudu } catch { Write-Warning "Kudu publish upload failed: $($_.Exception.Message)" }
   }
-  return (Wait-DeploymentComplete $BuildTimeoutSec)
+  return (Wait-DeploymentComplete $BuildTimeoutSec $prevId)
 }
 
 function Test-Healthy {
@@ -213,6 +248,22 @@ function Invoke-AzLogin {
 # --- main --------------------------------------------------------------------
 
 try {
+  # Package-only: build the self-contained prebuilt artifact and stop. No Azure
+  # session or upload — you deploy deploy.zip yourself via Kudu ZipDeploy. Useful
+  # behind a proxy that blocks the CLI upload.
+  if ($Package) {
+    Build-PrebuiltStage
+    Step 'Building deploy.zip'
+    New-Zip $Stage
+    Write-Host "`nPackage ready: $Zip" -ForegroundColor Green
+    Write-Host 'Deploy it manually via Kudu ZipDeploy:' -ForegroundColor Cyan
+    Write-Host "  1. Make sure App setting SCM_DO_BUILD_DURING_DEPLOYMENT=false (this is a prebuilt artifact)."
+    Write-Host "  2. Open  $ScmBase/ZipDeployUI  and drag deploy.zip onto the page,"
+    Write-Host "     or:  curl -X POST -u '<user>:<pwd>' --data-binary @deploy.zip '$ScmBase/api/zipdeploy'"
+    Write-Host "  The container extracts to /home/site/wwwroot and runs 'node build'. The DB is untouched."
+    return
+  }
+
   Step 'Preflight'
   if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
     throw "Azure CLI 'az' not found on PATH. Install it and run 'az login'."
@@ -282,8 +333,9 @@ try {
 finally {
   # Clean every build/deploy artifact this script produces. Fast mode runs a
   # local `npm run build`, which leaves `build/` in the repo root (reliable mode
-  # builds on Azure, so it never creates one locally).
+  # builds on Azure, so it never creates one locally). In -Package mode we KEEP
+  # deploy.zip — that's the deliverable the operator uploads via Kudu.
   Remove-Item -Recurse -Force $Stage -ErrorAction SilentlyContinue
-  Remove-Item -Force $Zip -ErrorAction SilentlyContinue
-  if ($Fast) { Remove-Item -Recurse -Force (Join-Path $RepoRoot 'build') -ErrorAction SilentlyContinue }
+  if (-not $Package) { Remove-Item -Force $Zip -ErrorAction SilentlyContinue }
+  if ($Fast -or $Package) { Remove-Item -Recurse -Force (Join-Path $RepoRoot 'build') -ErrorAction SilentlyContinue }
 }

@@ -82,13 +82,13 @@ export function seedDatabase(): boolean {
 		},
 	]).run();
 
-	// Default availability: Tue–Sat 9h–18h
+	// Default availability: Tue–Sat 9h–19h30
 	db.insert(availability).values([
-		{ dayOfWeek: 2, startTime: '09:00', endTime: '18:00' },
-		{ dayOfWeek: 3, startTime: '09:00', endTime: '18:00' },
-		{ dayOfWeek: 4, startTime: '09:00', endTime: '18:00' },
-		{ dayOfWeek: 5, startTime: '09:00', endTime: '18:00' },
-		{ dayOfWeek: 6, startTime: '09:00', endTime: '17:00' },
+		{ dayOfWeek: 2, startTime: '09:00', endTime: '19:30' },
+		{ dayOfWeek: 3, startTime: '09:00', endTime: '19:30' },
+		{ dayOfWeek: 4, startTime: '09:00', endTime: '19:30' },
+		{ dayOfWeek: 5, startTime: '09:00', endTime: '19:30' },
+		{ dayOfWeek: 6, startTime: '09:00', endTime: '19:30' },
 	]).run();
 
 	db.insert(cmsContent).values([

@@ -33,6 +33,8 @@
 	];
 
 	const pad = (n: number) => String(n).padStart(2, '0');
+	const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+	const toHHMM = (n: number) => `${pad(Math.floor(n / 60))}:${pad(n % 60)}`;
 
 	// Weekly schedule lookups
 	const activeWeekdays = $derived(new Set(data.availability.filter((a) => a.active).map((a) => a.dayOfWeek)));
@@ -45,6 +47,83 @@
 
 	// Date-specific closures keyed by YYYY-MM-DD
 	const closedMap = $derived(new Map(data.closures.map((c) => [c.date, c])));
+
+	// Reserved hour ranges keyed by date → Set of blocked slot start times.
+	const blocksByDate = $derived.by(() => {
+		const m = new Map<string, Set<string>>();
+		for (const b of data.slotBlocks) {
+			if (!m.has(b.date)) m.set(b.date, new Set());
+			m.get(b.date)!.add(b.startTime);
+		}
+		return m;
+	});
+
+	// --- Per-day hours editor -------------------------------------------------
+	// Clicking a calendar day selects it and reveals an inline editor where the
+	// admin can close the whole day or reserve individual 30-min slots.
+	let selectedDate = $state<string | null>(null);
+	function selectDate(dateStr: string) {
+		selectedDate = selectedDate === dateStr ? null : dateStr;
+	}
+
+	const SLOT_STEP = 30;
+	const selWeekday = $derived(selectedDate ? new Date(selectedDate + 'T00:00:00').getDay() : -1);
+	const selClosure = $derived(selectedDate ? closedMap.get(selectedDate) : undefined);
+	const selHours = $derived(selWeekday >= 0 ? hoursByDay.get(selWeekday) : undefined);
+	const selBlocked = $derived((selectedDate && blocksByDate.get(selectedDate)) || new Set<string>());
+
+	// 30-min slots spanning the weekday's open window, for the selected date.
+	const daySlots = $derived.by(() => {
+		if (!selHours) return [] as { start: string; end: string }[];
+		const s = toMin(selHours.start);
+		const e = toMin(selHours.end);
+		const out: { start: string; end: string }[] = [];
+		for (let t = s; t + SLOT_STEP <= e; t += SLOT_STEP) {
+			out.push({ start: toHHMM(t), end: toHHMM(t + SLOT_STEP) });
+		}
+		return out;
+	});
+
+	function formatDateFR(dateStr: string): string {
+		return new Date(dateStr + 'T00:00:00').toLocaleDateString('fr-FR', {
+			weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+		});
+	}
+
+	// Local draft of reserved slots for the open editor. Clicking a slot only
+	// updates this set in memory; nothing is persisted until the admin saves.
+	let draftBlocked = $state(new Set<string>());
+	let draftDate = $state<string | null>(null);
+	$effect(() => {
+		// Re-seed the draft from the saved blocks whenever a different day opens
+		// (or the editor closes), so stale selections never leak across dates.
+		if (selectedDate !== draftDate) {
+			draftDate = selectedDate;
+			draftBlocked = new Set(selectedDate ? blocksByDate.get(selectedDate) ?? [] : []);
+		}
+	});
+	function toggleDraft(start: string) {
+		const next = new Set(draftBlocked);
+		if (next.has(start)) next.delete(start); else next.add(start);
+		draftBlocked = next;
+	}
+	// Unsaved changes vs the persisted set — drives the save button + close guard.
+	const draftDirty = $derived.by(() => {
+		if (draftBlocked.size !== selBlocked.size) return true;
+		for (const s of draftBlocked) if (!selBlocked.has(s)) return true;
+		return false;
+	});
+
+	function closeEditor() {
+		if (draftDirty && !confirm('Des modifications non enregistrées seront perdues. Fermer quand même ?')) return;
+		selectedDate = null;
+	}
+
+	// Persist the draft slots for the date, then dismiss the editor.
+	const saveSlotsAndClose: SubmitFunction = () => async ({ update, result }) => {
+		await update({ reset: false });
+		if (result.type === 'success') { showToast('Créneaux enregistrés'); selectedDate = null; }
+	};
 
 	// Calendar view state — start on the current month.
 	const today = new Date();
@@ -113,7 +192,7 @@
 				class="w-8 h-8 grid place-items-center rounded-sm border border-(--color-sand) hover:bg-(--color-sand)/30">›</button>
 		</div>
 	</div>
-	<p class="font-sans text-xs text-(--color-stone) mb-4">Cliquez sur un jour pour le fermer ou le rouvrir. Les jours fériés français sont fermés par défaut.</p>
+	<p class="font-sans text-xs text-(--color-stone) mb-4">Cliquez sur un jour pour le modifier : fermer toute la journée ou réserver des créneaux horaires précis. Les jours fériés français sont fermés par défaut.</p>
 
 	{#snippet monthGrid(year: number, month: number)}
 		<div class="flex-1 min-w-0 max-w-md">
@@ -128,28 +207,30 @@
 					{#if cell === null}
 						<div></div>
 					{:else}
-						<form method="POST" action="?/toggleClosure" use:enhance>
-							<input type="hidden" name="date" value={cell.dateStr} />
-							<button type="submit"
-								title={cell.closed ? (cell.reason ?? 'Fermé') : cell.weeklyOff ? 'Jour de repos' : (hoursByDay.get(cell.weekday) ? `${hoursByDay.get(cell.weekday)?.start}–${hoursByDay.get(cell.weekday)?.end}` : 'Ouvert')}
-								class="w-full aspect-square rounded-sm border text-left p-1.5 flex flex-col justify-between transition-colors
-									{cell.closed
-										? (cell.holiday ? 'bg-amber-50 border-amber-300 hover:bg-amber-100' : 'bg-red-50 border-red-300 hover:bg-red-100')
-										: cell.weeklyOff
-											? 'bg-(--color-sand)/30 border-(--color-sand) hover:bg-(--color-sand)/50'
+						{@const blockedCount = blocksByDate.get(cell.dateStr)?.size ?? 0}
+						<button type="button" onclick={() => selectDate(cell.dateStr)}
+							title={cell.closed ? (cell.reason ?? 'Fermé') : cell.weeklyOff ? 'Jour de repos' : (hoursByDay.get(cell.weekday) ? `${hoursByDay.get(cell.weekday)?.start}–${hoursByDay.get(cell.weekday)?.end}` : 'Ouvert')}
+							class="relative w-full aspect-square rounded-sm border text-left p-1 sm:p-1.5 flex flex-col justify-between transition-colors
+								{cell.closed
+									? (cell.holiday ? 'bg-amber-50 border-amber-300 hover:bg-amber-100' : 'bg-red-50 border-red-300 hover:bg-red-100')
+									: cell.weeklyOff
+										? 'bg-(--color-sand)/30 border-(--color-sand) hover:bg-(--color-sand)/50'
+										: blockedCount > 0
+											? 'bg-(--color-gold)/10 border-(--color-gold)/60 hover:bg-(--color-gold)/20'
 											: 'bg-white border-(--color-sand)/60 hover:border-(--color-forest)'}
-									{cell.past ? 'opacity-50' : ''}
-									{cell.dateStr === todayStr ? 'ring-2 ring-(--color-forest)' : ''}">
-								<span class="font-sans text-xs text-(--color-charcoal)">{cell.day}</span>
-								{#if cell.closed}
-									<span class="font-sans text-[10px] leading-tight {cell.holiday ? 'text-amber-700' : 'text-red-600'} truncate">{cell.holiday ? cell.reason : 'Fermé'}</span>
-								{:else if cell.weeklyOff}
-									<span class="font-sans text-[10px] leading-tight text-(--color-stone)">Repos</span>
-								{:else}
-									<span class="font-sans text-[10px] leading-tight text-(--color-forest)">Ouvert</span>
-								{/if}
-							</button>
-						</form>
+								{cell.past ? 'opacity-50' : ''}
+								{cell.dateStr === selectedDate ? 'ring-2 ring-(--color-gold)' : cell.dateStr === todayStr ? 'ring-2 ring-(--color-forest)' : ''}">
+							<span class="font-sans text-xs text-(--color-charcoal)">{cell.day}</span>
+							{#if cell.closed}
+								<span class="font-sans text-[10px] leading-tight {cell.holiday ? 'text-amber-700' : 'text-red-600'} truncate w-full">{cell.holiday ? cell.reason : 'Fermé'}</span>
+							{:else if cell.weeklyOff}
+								<span class="font-sans text-[10px] leading-tight text-(--color-stone) truncate w-full">Repos</span>
+							{:else if blockedCount > 0}
+								<span class="font-sans text-[10px] leading-tight text-(--color-gold-dark) truncate w-full">{blockedCount} rés.</span>
+							{:else}
+								<span class="font-sans text-[10px] leading-tight text-(--color-forest) truncate w-full">Ouvert</span>
+							{/if}
+						</button>
 					{/if}
 				{/each}
 			</div>
@@ -167,9 +248,84 @@
 	<div class="flex flex-wrap gap-4 mt-4 font-sans text-xs text-(--color-stone)">
 		<span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-white border border-(--color-sand)/60"></span> Ouvert</span>
 		<span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-(--color-sand)/30 border border-(--color-sand)"></span> Repos hebdo</span>
+		<span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-(--color-gold)/10 border border-(--color-gold)/60"></span> Partiellement réservé</span>
 		<span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-red-50 border border-red-300"></span> Fermeture</span>
 		<span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-amber-50 border border-amber-300"></span> Jour férié</span>
 	</div>
+
+	<!-- Per-day editor: appears when a calendar day is selected -->
+	{#if selectedDate}
+		<div transition:fly={{ y: 8, duration: 150 }} class="mt-6 border-t border-(--color-sand) pt-6">
+			<div class="flex items-start justify-between gap-4 mb-4">
+				<div>
+					<p class="font-serif text-lg text-(--color-charcoal) capitalize">{formatDateFR(selectedDate)}</p>
+					{#if selClosure}
+						<p class="font-sans text-xs text-red-600 mt-0.5">{selClosure.isHoliday ? `Jour férié — ${selClosure.reason}` : 'Journée fermée'}</p>
+					{:else if !selHours}
+						<p class="font-sans text-xs text-(--color-stone) mt-0.5">Jour de repos hebdomadaire — ajoutez ce jour aux horaires hebdomadaires pour réserver des créneaux.</p>
+					{:else}
+						<p class="font-sans text-xs text-(--color-stone) mt-0.5">Ouvert {selHours.start}–{selHours.end} · touchez un créneau pour le réserver (le rendre indisponible).</p>
+					{/if}
+				</div>
+				<button type="button" onclick={closeEditor} aria-label="Fermer l'éditeur"
+					class="shrink-0 w-9 h-9 grid place-items-center rounded-sm border border-(--color-sand) hover:bg-(--color-sand)/30 text-(--color-stone)">✕</button>
+			</div>
+
+			<!-- Close / reopen the whole day -->
+			<form method="POST" action="?/toggleClosure" use:enhance={saveAnd(selClosure ? 'Journée rouverte' : 'Journée fermée')} class="mb-5">
+				<input type="hidden" name="date" value={selectedDate} />
+				<button type="submit"
+					class="w-full sm:w-auto px-4 py-2.5 text-xs font-sans rounded-sm border transition-colors
+						{selClosure
+							? 'border-(--color-forest) text-(--color-forest) hover:bg-(--color-forest)/5'
+							: 'border-red-300 text-red-600 hover:bg-red-50'}">
+					{selClosure ? 'Rouvrir toute la journée' : 'Fermer toute la journée'}
+				</button>
+			</form>
+
+			<!-- Individual hour slots (only when the day is open and a working weekday) -->
+			{#if !selClosure && daySlots.length > 0}
+				<div class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-2">
+					{#each daySlots as slot (slot.start)}
+						{@const reserved = draftBlocked.has(slot.start)}
+						<button type="button" onclick={() => toggleDraft(slot.start)}
+							aria-pressed={reserved}
+							title={reserved ? 'Réservé — touchez pour rouvrir' : 'Ouvert — touchez pour réserver'}
+							class="w-full py-3 px-2 text-sm font-sans rounded-sm border transition-colors
+								{reserved
+									? 'bg-(--color-gold)/15 border-(--color-gold) text-(--color-gold-dark) line-through'
+									: 'bg-white border-(--color-sand) text-(--color-charcoal) hover:border-(--color-forest)'}">
+							{slot.start}
+						</button>
+					{/each}
+				</div>
+				<div class="flex flex-wrap gap-4 mt-4 font-sans text-xs text-(--color-stone)">
+					<span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-white border border-(--color-sand)"></span> Ouvert à la réservation</span>
+					<span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-(--color-gold)/15 border border-(--color-gold)"></span> Réservé / indisponible</span>
+				</div>
+
+				<!-- Save the selected hours and dismiss the editor -->
+				<form method="POST" action="?/setSlotBlocks" use:enhance={saveSlotsAndClose}
+					class="flex flex-col sm:flex-row sm:items-center gap-3 mt-5 pt-5 border-t border-(--color-sand)">
+					<input type="hidden" name="date" value={selectedDate} />
+					{#each [...draftBlocked] as st}
+						<input type="hidden" name="slot" value={st} />
+					{/each}
+					<button type="submit" disabled={!draftDirty}
+						class="w-full sm:w-auto px-5 py-2.5 bg-(--color-forest) text-white text-xs font-sans rounded-sm hover:bg-(--color-forest-light) transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+						Enregistrer et fermer
+					</button>
+					<button type="button" onclick={closeEditor}
+						class="w-full sm:w-auto px-5 py-2.5 text-xs font-sans rounded-sm border border-(--color-sand) text-(--color-stone) hover:bg-(--color-sand)/30 transition-colors">
+						Annuler
+					</button>
+					{#if draftDirty}
+						<span class="font-sans text-xs text-(--color-gold-dark)">Modifications non enregistrées</span>
+					{/if}
+				</form>
+			{/if}
+		</div>
+	{/if}
 </section>
 
 <!-- ============================ CAPACITY (BEDS) ============================ -->

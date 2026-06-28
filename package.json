@@ -1,7 +1,7 @@
 {
 	"name": "spa",
 	"private": true,
-	"version": "0.0.1",
+	"version": "1.0.0",
 	"type": "module",
 	"engines": {
 		"node": ">=22"
@@ -21,6 +21,7 @@
 		"test:e2e:report": "playwright show-report",
 		"deploy-azure": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-azure.ps1",
 		"deploy-azure:fast": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-azure.ps1 -Fast",
+		"deploy-azure:package": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-azure.ps1 -Package",
 		"db:init": "npx tsx scripts/init-db.ts",
 		"db:migrate": "npx tsx scripts/migrate-db.ts",
 		"deploy-db": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-db.ps1",
@@ -40,7 +41,7 @@
 		"tailwindcss": "^4.3.0",
 		"typescript": "^6.0.3",
 		"vite": "^8.0.16",
-		"vitest": "^3.2.0"
+		"vitest": "^4.1.9"
 	},
 	"dependencies": {
 		"@types/better-sqlite3": "^7.6.13",
@@ -48,5 +49,13 @@
 		"better-sqlite3": "^12.10.0",
 		"drizzle-orm": "^0.45.2",
 		"jose": "^6.2.3"
+	},
+	"overrides": {
+		"cookie": "^0.7.2",
+		"esbuild": "^0.28.1"
+	},
+	"allowScripts": {
+		"esbuild@0.28.1": true,
+		"better-sqlite3@12.11.1": true
 	}
 }

@@ -84,8 +84,19 @@ export function createSchema(sqlite: Database.Database): void {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			slug TEXT NOT NULL UNIQUE,
 			name TEXT NOT NULL,
-			sort_order INTEGER NOT NULL DEFAULT 0
+			sort_order INTEGER NOT NULL DEFAULT 0,
+			phone_only INTEGER NOT NULL DEFAULT 0
 		);
+
+		CREATE TABLE IF NOT EXISTS slot_blocks (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			date TEXT NOT NULL,
+			start_time TEXT NOT NULL,
+			end_time TEXT NOT NULL
+		);
+
+		CREATE UNIQUE INDEX IF NOT EXISTS slot_blocks_date_start
+			ON slot_blocks (date, start_time);
 	`);
 
 	// Migration: add `options` column to existing service tables (pre-formules DBs)
@@ -112,5 +123,11 @@ export function createSchema(sqlite: Database.Database): void {
 	const userCols = sqlite.prepare(`PRAGMA table_info(users)`).all() as { name: string }[];
 	if (!userCols.some((c) => c.name === 'notes')) {
 		sqlite.exec(`ALTER TABLE users ADD COLUMN notes TEXT`);
+	}
+
+	// Migration: add `phone_only` flag to existing categories tables
+	const categoryCols = sqlite.prepare(`PRAGMA table_info(categories)`).all() as { name: string }[];
+	if (!categoryCols.some((c) => c.name === 'phone_only')) {
+		sqlite.exec(`ALTER TABLE categories ADD COLUMN phone_only INTEGER NOT NULL DEFAULT 0`);
 	}
 }

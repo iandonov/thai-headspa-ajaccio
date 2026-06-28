@@ -19,7 +19,7 @@ export const actions: Actions = {
 		const phone = String(data.get('phone') || '').trim();
 		const password = String(data.get('password') || '');
 
-		if (!firstName || !lastName || !email || !password) {
+		if (!firstName || !lastName || !email || !phone || !password) {
 			return fail(400, { error: 'Veuillez remplir tous les champs obligatoires.' });
 		}
 		if (password.length < 8) {
@@ -37,7 +37,7 @@ export const actions: Actions = {
 			passwordHash,
 			firstName,
 			lastName,
-			phone: phone || null,
+			phone,
 			role: 'client',
 			createdAt: new Date(),
 		}).run();

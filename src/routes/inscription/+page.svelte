@@ -44,8 +44,8 @@
 				</div>
 
 				<div>
-					<label for="phone" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Téléphone</label>
-					<input id="phone" type="tel" name="phone" class="input-field" placeholder="06 00 00 00 00" />
+					<label for="phone" class="block font-sans text-xs tracking-wider uppercase text-(--color-stone) mb-2">Téléphone *</label>
+					<input id="phone" type="tel" name="phone" required autocomplete="tel" class="input-field" placeholder="06 00 00 00 00" />
 				</div>
 
 				<div>

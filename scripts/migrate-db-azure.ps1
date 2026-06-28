@@ -160,12 +160,16 @@ function Get-RemoteFile($Headers, $Name, $LocalPath) {
   }
 }
 
-# Upload a single file to an absolute path on the app via OneDeploy (type=static).
-function Push-File($LocalPath, $RemotePath) {
-  az webapp deploy -n $App -g $ResourceGroup `
-    --src-path $LocalPath --type static --target-path $RemotePath `
-    --track-status false | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw "Upload failed for $RemotePath (exit $LASTEXITCODE)." }
+# Upload a single file to an absolute /home/... path via the Kudu VFS API (PUT).
+# PowerShell's HTTP stack uses the Windows certificate store, so this works behind
+# a TLS-intercepting corporate proxy that breaks az (Python/requests: SSL
+# CERTIFICATE_VERIFY_FAILED) — the same stack already used here for download/delete.
+function Push-File($Headers, $LocalPath, $RemotePath) {
+  $rel = ($RemotePath -replace '^/home/?', '').TrimEnd('/')
+  $uri = "https://$App.scm.azurewebsites.net/api/vfs/$rel"
+  $h = @{} + $Headers
+  $h['If-Match'] = '*'   # overwrite unconditionally
+  Invoke-WebRequest -Uri $uri -Method Put -Headers $h -InFile $LocalPath -ContentType 'application/octet-stream' -TimeoutSec 300 | Out-Null
   Write-Host "  → $RemotePath"
 }
 
@@ -291,7 +295,7 @@ try {
   # it. Only then replace the database file itself.
   Remove-RemoteFile $kudu "$DbName-wal"
   Remove-RemoteFile $kudu "$DbName-shm"
-  Push-File $workDb "$RemoteDir/$DbName"
+  Push-File $kudu $workDb "$RemoteDir/$DbName"
 
   Step 'Starting app'
   az webapp start -n $App -g $ResourceGroup | Out-Null

@@ -1,6 +1,6 @@
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db/index';
-import { availability, closures, settings } from '$lib/server/db/schema';
+import { availability, closures, settings, slotBlocks } from '$lib/server/db/schema';
 import { frenchHolidays } from '$lib/server/db/seed';
 import { eq } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
@@ -8,10 +8,12 @@ import { fail } from '@sveltejs/kit';
 export const load: PageServerLoad = async () => {
 	const avail = db.select().from(availability).orderBy(availability.dayOfWeek).all();
 	const closed = db.select().from(closures).orderBy(closures.date).all();
+	const blocks = db.select().from(slotBlocks).orderBy(slotBlocks.date, slotBlocks.startTime).all();
 	const [bedsRow] = db.select().from(settings).where(eq(settings.key, 'total_beds')).all();
 	return {
 		availability: avail,
 		closures: closed,
+		slotBlocks: blocks,
 		totalBeds: bedsRow ? Number(bedsRow.value) : 1,
 	};
 };
@@ -82,6 +84,30 @@ export const actions: Actions = {
 				reason: holiday ? holiday.reason : 'Fermeture',
 				isHoliday: !!holiday,
 			}).run();
+		}
+		return { success: true };
+	},
+
+	// Replace the reserved hour slots for a date with the submitted selection.
+	// The admin toggles slots locally and saves the whole set at once; the date
+	// stays open in the weekly schedule, only the listed windows are unbookable.
+	setSlotBlocks: async ({ request }) => {
+		const data = await request.formData();
+		const date = String(data.get('date') || '');
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, { error: 'Date invalide.' });
+		const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
+		const starts = data.getAll('slot').map(String).filter((s) => timeRe.test(s));
+
+		// Each slot is a 30-min window; its end is the next boundary.
+		const endOf = (start: string) => {
+			const [h, m] = start.split(':').map(Number);
+			const e = h * 60 + m + 30;
+			return `${String(Math.floor(e / 60)).padStart(2, '0')}:${String(e % 60).padStart(2, '0')}`;
+		};
+
+		db.delete(slotBlocks).where(eq(slotBlocks.date, date)).run();
+		for (const start of starts) {
+			db.insert(slotBlocks).values({ date, startTime: start, endTime: endOf(start) }).run();
 		}
 		return { success: true };
 	},
